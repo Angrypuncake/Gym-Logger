@@ -1,9 +1,12 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { listTemplates, listTemplateItemPreviews } from "@/db/templates";
+import { getCurrentSession, getSessionProgressPct } from "@/db/sessions";
 
-function pct(n: number) {
-  return Math.max(0, Math.min(100, Math.round(n)));
-}
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 
 export default async function VaultHome({
   params,
@@ -11,137 +14,116 @@ export default async function VaultHome({
   params: Promise<{ vaultId: string }>;
 }) {
   const { vaultId } = await params;
-  const supabase = await createClient();
 
-  // 1) Templates
-  const { data: templates, error: templatesErr } = await supabase
-    .from("templates")
-    .select("id,name,order")
-    .eq("vault_id", vaultId)
-    .order("order", { ascending: true });
+  const templates = await listTemplates(vaultId);
+  const templateIds = templates.map((t) => t.id);
+  const itemsByTemplate = await listTemplateItemPreviews(vaultId, templateIds);
 
-  if (templatesErr) return <pre>{templatesErr.message}</pre>;
+  const currentSession = await getCurrentSession(vaultId);
 
-  const templateIds = (templates ?? []).map((t) => t.id);
-
-  // Fetch all template_items + exercise names once, then group in JS
-  const { data: items, error: itemsErr } = await supabase
-    .from("template_items")
-    .select("template_id,order,exercise:exercises(name)")
-    .eq("vault_id", vaultId)
-    .in("template_id", templateIds)
-    .order("order", { ascending: true });
-
-  if (itemsErr) return <pre>{itemsErr.message}</pre>;
-
-  const itemsByTemplate = new Map<string, { name: string }[]>();
-  for (const it of items ?? []) {
-    const exName = (it.exercise as unknown as { name: string } | null)?.name;
-    if (!exName) continue;
-    const arr = itemsByTemplate.get(it.template_id) ?? [];
-    arr.push({ name: exName });
-    itemsByTemplate.set(it.template_id, arr);
-  }
-
-  // 2) Current workout (latest session for now; add finished_at later if needed)
-  const { data: currentSession } = await supabase
-    .from("workout_sessions")
-    .select("id,date,template_id, template:templates(name)")
-    .eq("vault_id", vaultId)
-    .is("finished_at", null)
-    .order("date", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-
-  let current = null as null | {
+  let current: null | {
     sessionId: string;
     templateName: string;
     pct: number;
-  };
+  } = null;
 
   if (currentSession?.id) {
-    const sessionId = currentSession.id;
     const templateName =
-      (currentSession.template as unknown as { name: string } | null)?.name ?? "Workout";
+      (currentSession.template as unknown as { name: string } | null)?.name ??
+      "Workout";
 
-    // Progress = completed sets / total sets
-    // Completed = has reps or duration_sec (and optionally weight_kg)
-    const { data: sets } = await supabase
-      .from("sets")
-      .select("reps,weight_kg,duration_sec, workout_entries!inner(session_id)")
-      .eq("vault_id", vaultId)
-      .eq("workout_entries.session_id", sessionId);
-
-    const total = sets?.length ?? 0;
-    const done =
-      sets?.filter((s) => (s.reps ?? null) !== null || (s.duration_sec ?? null) !== null).length ??
-      0;
-
-    current = {
-      sessionId,
-      templateName,
-      pct: total === 0 ? 0 : pct((done / total) * 100),
-    };
+    const pct = await getSessionProgressPct(vaultId, currentSession.id);
+    current = { sessionId: currentSession.id, templateName, pct };
   }
 
   return (
-    
-    <div style={{ padding: 16, maxWidth: 860, margin: "0 auto" }}>
-        <Link href={`/v/${vaultId}/sessions`}>See workout history</Link>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
-        <h1 style={{ fontSize: 16, margin: 0 }}>Program days</h1>
-        <Link href={`/v/${vaultId}/templates/new`}>Add new template</Link>
+    <div className="mx-auto max-w-[860px] px-4 py-6 space-y-6">
+      <Link
+        href={`/v/${vaultId}/sessions`}
+        className="text-sm text-muted-foreground hover:underline"
+      >
+        See workout history
+      </Link>
+
+      <div className="flex items-center justify-between">
+        <h1 className="text-sm font-semibold">Program days</h1>
+        <Link href={`/v/${vaultId}/templates/new`}>
+          <Button size="sm" variant="secondary">
+            Add new template
+          </Button>
+        </Link>
       </div>
 
       {current && (
-        <section style={{ border: "1px solid #242c35", borderRadius: 14, padding: 14, marginBottom: 12 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-            <div>
-              <div style={{ fontWeight: 600 }}>Current workout</div>
-              <div style={{ opacity: 0.7 }}>
-                {current.templateName} · {current.pct}%
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <CardTitle className="text-sm">Current workout</CardTitle>
+                <div className="text-sm text-muted-foreground">
+                  {current.templateName} · {current.pct}%
+                </div>
               </div>
+
+              <Link href={`/v/${vaultId}/sessions/${current.sessionId}`}>
+                <Button size="sm">Resume</Button>
+              </Link>
             </div>
-            <Link href={`/v/${vaultId}/sessions/${current.sessionId}`}>Resume</Link>
-          </div>
-          <div style={{ marginTop: 10, height: 10, border: "1px solid #242c35", borderRadius: 999, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${current.pct}%` }} />
-          </div>
-        </section>
+          </CardHeader>
+
+          <CardContent className="pt-0">
+            <Progress value={current.pct} />
+          </CardContent>
+        </Card>
       )}
 
-      <section style={{ border: "1px solid #242c35", borderRadius: 14, padding: 14 }}>
-        <div style={{ fontWeight: 600, marginBottom: 10 }}>Templates</div>
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">Templates</CardTitle>
+        </CardHeader>
 
-        {(templates ?? []).map((t) => {
-          const ex = itemsByTemplate.get(t.id) ?? [];
-          const count = ex.length;
-          const preview = ex.slice(0, 4).map((x) => x.name).join(" · ");
+        <CardContent className="pt-0">
+          <div className="divide-y">
+            {templates.map((t) => {
+              const ex = itemsByTemplate.get(t.id) ?? [];
+              const count = ex.length;
+              const preview = ex.slice(0, 4).join(" · ");
 
-          return (
-            <div key={t.id} style={{ padding: "10px 0", borderTop: "1px solid #242c35" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-                <div>
-                  <div style={{ fontWeight: 600 }}>{t.name}</div>
-                  <div style={{ opacity: 0.7 }}>{preview}</div>
+              return (
+                <div key={t.id} className="py-4 flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="font-medium text-sm">{t.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {preview}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">{count} exercises</Badge>
+
+                    <Link href={`/v/${vaultId}/templates/${t.id}`}>
+                      <Button size="sm" variant="ghost">
+                        Edit
+                      </Button>
+                    </Link>
+
+                    <form action={`/v/${vaultId}/start`} method="post">
+                      <input
+                        type="hidden"
+                        name="template_id"
+                        value={t.id}
+                      />
+                      <Button size="sm" type="submit">
+                        Start
+                      </Button>
+                    </form>
+                  </div>
                 </div>
-
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  <span style={{ opacity: 0.7, border: "1px solid #242c35", padding: "6px 10px", borderRadius: 999 }}>
-                    {count} exercises
-                  </span>
-                  <Link href={`/v/${vaultId}/templates/${t.id}`}>Edit</Link>
-                  <form action={`/v/${vaultId}/start`} method="post">
-                    <input type="hidden" name="template_id" value={t.id} />
-                    <button type="submit">Start</button>
-                  </form>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </section>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

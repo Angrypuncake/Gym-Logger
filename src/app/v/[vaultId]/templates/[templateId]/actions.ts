@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import type { Enums } from "@/types/supabase";
+import { revalidatePath } from "next/cache";
 
 export async function renameTemplate(vaultId: string, templateId: string, formData: FormData) {
   const name = String(formData.get("name") || "").trim();
@@ -49,6 +50,7 @@ export async function addExistingExercise(
   });
 
   if (error) throw new Error(error.message);
+  revalidatePath(`/v/${vaultId}/templates/${templateId}`);
 }
 
 export async function createExerciseAndAdd(
@@ -94,10 +96,12 @@ export async function createExerciseAndAdd(
   });
 
   if (error) throw new Error(error.message);
+  revalidatePath(`/v/${vaultId}/templates/${templateId}`);
 }
 
 export async function setTargetSets(
   vaultId: string,
+  templateId: string,
   templateItemId: string,
   formData: FormData
 ) {
@@ -116,9 +120,10 @@ export async function setTargetSets(
     .eq("vault_id", vaultId);
 
   if (error) throw new Error(error.message);
+  revalidatePath(`/v/${vaultId}/templates/${templateId}`);
 }
 
-export async function removeTemplateItem(vaultId: string, templateItemId: string) {
+export async function removeTemplateItem(vaultId: string,templateId: string, templateItemId: string) {
   const supabase = await createClient();
   const { error } = await supabase
     .from("template_items")
@@ -127,6 +132,7 @@ export async function removeTemplateItem(vaultId: string, templateItemId: string
     .eq("vault_id", vaultId);
 
   if (error) throw new Error(error.message);
+  revalidatePath(`/v/${vaultId}/templates/${templateId}`);
 }
 
 export async function moveItem(
@@ -172,4 +178,5 @@ export async function moveItem(
     .eq("vault_id", vaultId);
 
   if (u2) throw new Error(u2.message);
+  revalidatePath(`/v/${vaultId}/templates/${templateId}`);
 }

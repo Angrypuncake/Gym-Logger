@@ -1,88 +1,109 @@
 import Link from "next/link";
-import { listTemplates, listTemplateItemPreviews } from "@/db/templates";
-import { getCurrentSession, getSessionProgressPct } from "@/db/sessions";
+import { createClient } from "@/lib/supabase/server";
 
-export default async function VaultHome({
+function formatDate(d: string) {
+  const dt = new Date(d);
+  return dt.toLocaleString();
+}
+
+export default async function SessionsHistoryPage({
   params,
 }: {
   params: Promise<{ vaultId: string }>;
 }) {
   const { vaultId } = await params;
+  const supabase = await createClient();
 
-  const templates = await listTemplates(vaultId);
-  const templateIds = templates.map((t) => t.id);
-  const itemsByTemplate = await listTemplateItemPreviews(vaultId, templateIds);
+  // Completed sessions only
+  const { data: sessions, error: sErr } = await supabase
+    .from("workout_sessions")
+    .select("id,date,finished_at, template:templates(name)")
+    .eq("vault_id", vaultId)
+    .not("finished_at", "is", null)
+    .order("finished_at", { ascending: false })
+    .limit(50);
 
-  const currentSession = await getCurrentSession(vaultId);
+  if (sErr) return <pre>{sErr.message}</pre>;
 
-  let current: null | { sessionId: string; templateName: string; pct: number } = null;
+  const sessionIds = (sessions ?? []).map((s) => s.id);
 
-  if (currentSession?.id) {
-    const templateName =
-      (currentSession.template as unknown as { name: string } | null)?.name ?? "Workout";
+  // Pull sets for these sessions and compute completion stats
+  // Completed set = reps != null OR duration_sec != null
+  const { data: sets, error: setsErr } = await supabase
+    .from("sets")
+    .select("reps,duration_sec, workout_entries!inner(session_id)")
+    .eq("vault_id", vaultId)
+    .in("workout_entries.session_id", sessionIds);
 
-    const pct = await getSessionProgressPct(vaultId, currentSession.id);
-    current = { sessionId: currentSession.id, templateName, pct };
+  if (setsErr) return <pre>{setsErr.message}</pre>;
+
+  const stats = new Map<string, { total: number; done: number }>();
+  for (const row of sets ?? []) {
+    const sid = (row.workout_entries as unknown as { session_id: string }).session_id;
+    const cur = stats.get(sid) ?? { total: 0, done: 0 };
+    cur.total += 1;
+    if (row.reps !== null || row.duration_sec !== null) cur.done += 1;
+    stats.set(sid, cur);
   }
 
-  // render (your existing JSX)
   return (
     <div style={{ padding: 16, maxWidth: 860, margin: "0 auto" }}>
-      <Link href={`/v/${vaultId}/sessions`}>See workout history</Link>
-
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
-        <h1 style={{ fontSize: 16, margin: 0 }}>Program days</h1>
-        <Link href={`/v/${vaultId}/templates/new`}>Add new template</Link>
+        <h1 style={{ margin: 0, fontSize: 16 }}>Workout history</h1>
+        <div style={{ display: "flex", gap: 10 }}>
+          <Link href={`/v/${vaultId}`}>Home</Link>
+        </div>
       </div>
 
-      {current && (
-        <section style={{ border: "1px solid #242c35", borderRadius: 14, padding: 14, marginBottom: 12 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-            <div>
-              <div style={{ fontWeight: 600 }}>Current workout</div>
-              <div style={{ opacity: 0.7 }}>
-                {current.templateName} · {current.pct}%
-              </div>
-            </div>
-            <Link href={`/v/${vaultId}/sessions/${current.sessionId}`}>Resume</Link>
-          </div>
-          <div style={{ marginTop: 10, height: 10, border: "1px solid #242c35", borderRadius: 999, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${current.pct}%` }} />
-          </div>
-        </section>
-      )}
+      {(sessions?.length ?? 0) === 0 ? (
+        <div style={{ opacity: 0.7 }}>No completed workouts yet.</div>
+      ) : (
+        <div style={{ border: "1px solid #242c35", borderRadius: 14, overflow: "hidden" }}>
+          {(sessions ?? []).map((s, idx) => {
+            const templateName =
+              (s.template as unknown as { name: string } | null)?.name ?? "Workout";
+            const st = stats.get(s.id) ?? { total: 0, done: 0 };
+            const pct = st.total === 0 ? 0 : Math.round((st.done / st.total) * 100);
 
-      <section style={{ border: "1px solid #242c35", borderRadius: 14, padding: 14 }}>
-        <div style={{ fontWeight: 600, marginBottom: 10 }}>Templates</div>
-
-        {templates.map((t) => {
-          const ex = itemsByTemplate.get(t.id) ?? [];
-          const count = ex.length;
-          const preview = ex.slice(0, 4).join(" · ");
-
-          return (
-            <div key={t.id} style={{ padding: "10px 0", borderTop: "1px solid #242c35" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+            return (
+              <div
+                key={s.id}
+                style={{
+                  padding: 14,
+                  borderTop: idx === 0 ? "none" : "1px solid #242c35",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  alignItems: "center",
+                }}
+              >
                 <div>
-                  <div style={{ fontWeight: 600 }}>{t.name}</div>
-                  <div style={{ opacity: 0.7 }}>{preview}</div>
+                  <div style={{ fontWeight: 600 }}>{templateName}</div>
+                  <div style={{ opacity: 0.7 }}>
+                    Finished: {s.finished_at ? formatDate(s.finished_at) : "—"} · Started:{" "}
+                    {formatDate(s.date)}
+                  </div>
                 </div>
 
                 <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  <span style={{ opacity: 0.7, border: "1px solid #242c35", padding: "6px 10px", borderRadius: 999 }}>
-                    {count} exercises
+                  <span
+                    style={{
+                      opacity: 0.8,
+                      border: "1px solid #242c35",
+                      padding: "6px 10px",
+                      borderRadius: 999,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {pct}% · {st.done}/{st.total} sets
                   </span>
-                  <Link href={`/v/${vaultId}/templates/${t.id}`}>Edit</Link>
-                  <form action={`/v/${vaultId}/start`} method="post">
-                    <input type="hidden" name="template_id" value={t.id} />
-                    <button type="submit">Start</button>
-                  </form>
+                  <Link href={`/v/${vaultId}/sessions/${s.id}`}>View</Link>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </section>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
