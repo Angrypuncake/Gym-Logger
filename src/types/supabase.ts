@@ -75,6 +75,7 @@ export type Database = {
           id: string
           reps: number | null
           set_index: number
+          skipped: boolean | null
           vault_id: string
           weight_kg: number | null
         }
@@ -84,6 +85,7 @@ export type Database = {
           id?: string
           reps?: number | null
           set_index: number
+          skipped?: boolean | null
           vault_id: string
           weight_kg?: number | null
         }
@@ -93,6 +95,7 @@ export type Database = {
           id?: string
           reps?: number | null
           set_index?: number
+          skipped?: boolean | null
           vault_id?: string
           weight_kg?: number | null
         }
@@ -261,6 +264,7 @@ export type Database = {
       workout_sessions: {
         Row: {
           date: string
+          finished_at: string | null
           id: string
           notes: string | null
           template_id: string
@@ -268,6 +272,7 @@ export type Database = {
         }
         Insert: {
           date?: string
+          finished_at?: string | null
           id?: string
           notes?: string | null
           template_id: string
@@ -275,6 +280,7 @@ export type Database = {
         }
         Update: {
           date?: string
+          finished_at?: string | null
           id?: string
           notes?: string | null
           template_id?: string
