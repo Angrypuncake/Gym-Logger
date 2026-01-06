@@ -44,18 +44,21 @@ export type Database = {
           id: string
           modality: Database["public"]["Enums"]["modality"]
           name: string
+          uses_bodyweight: boolean
           vault_id: string
         }
         Insert: {
           id?: string
           modality: Database["public"]["Enums"]["modality"]
           name: string
+          uses_bodyweight?: boolean
           vault_id: string
         }
         Update: {
           id?: string
           modality?: Database["public"]["Enums"]["modality"]
           name?: string
+          uses_bodyweight?: boolean
           vault_id?: string
         }
         Relationships: [
@@ -263,6 +266,7 @@ export type Database = {
       }
       workout_sessions: {
         Row: {
+          body_weight_kg: number | null
           date: string
           finished_at: string | null
           id: string
@@ -271,6 +275,7 @@ export type Database = {
           vault_id: string
         }
         Insert: {
+          body_weight_kg?: number | null
           date?: string
           finished_at?: string | null
           id?: string
@@ -279,6 +284,7 @@ export type Database = {
           vault_id: string
         }
         Update: {
+          body_weight_kg?: number | null
           date?: string
           finished_at?: string | null
           id?: string

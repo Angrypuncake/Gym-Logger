@@ -1,11 +1,28 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { addExerciseToSession, saveSet, finishWorkout  } from "./actions";
+import {
+  addExerciseToSession,
+  saveSet,
+  finishWorkout,
+  discardWorkout,
+  updateBodyweight,
+  addSetToEntry,
+  deleteUnloggedSet,
+} from "./actions";
+
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+
+
+
+import SessionLogger from "./SessionLogger";
+import ConfirmSubmitButton from "./ConfirmSubmitButton";
 
 type EntryRow = {
   id: string;
   order: number;
-  exercise: { id: string; name: string; modality: "REPS" | "ISOMETRIC" };
+  exercise: { id: string; name: string; modality: "REPS" | "ISOMETRIC"; uses_bodyweight?: boolean };
 };
 
 type SetRow = {
@@ -25,10 +42,9 @@ export default async function SessionPage({
   const { vaultId, sessionId } = await params;
   const supabase = await createClient();
 
-  // Session header
   const { data: session, error: sErr } = await supabase
     .from("workout_sessions")
-    .select("id,date,notes, template:templates(name)")
+    .select("id,date,notes,body_weight_kg, template:templates(name)")
     .eq("vault_id", vaultId)
     .eq("id", sessionId)
     .single();
@@ -38,10 +54,9 @@ export default async function SessionPage({
   const templateName =
     (session.template as unknown as { name: string } | null)?.name ?? "Workout";
 
-  // Entries
   const { data: entries, error: eErr } = await supabase
     .from("workout_entries")
-    .select("id,order, exercise:exercises(id,name,modality)")
+    .select("id,order, exercise:exercises(id,name,modality,uses_bodyweight)")
     .eq("vault_id", vaultId)
     .eq("session_id", sessionId)
     .order("order", { ascending: true });
@@ -50,24 +65,35 @@ export default async function SessionPage({
 
   const entryIds = (entries ?? []).map((e) => e.id);
 
-  // Sets
-  const { data: sets, error: setsErr } = await supabase
-    .from("sets")
-    .select("id,entry_id,set_index,reps,weight_kg,duration_sec")
-    .eq("vault_id", vaultId)
-    .in("entry_id", entryIds)
-    .order("set_index", { ascending: true });
+  let sets: SetRow[] = [];
+  if (entryIds.length > 0) {
+    const { data: s, error: setsErr } = await supabase
+      .from("sets")
+      .select("id,entry_id,set_index,reps,weight_kg,duration_sec")
+      .eq("vault_id", vaultId)
+      .in("entry_id", entryIds)
+      .order("set_index", { ascending: true });
 
-  if (setsErr) return <pre>{setsErr.message}</pre>;
+    if (setsErr) return <pre>{setsErr.message}</pre>;
+    sets = (s ?? []) as any;
+  }
 
   const setsByEntry = new Map<string, SetRow[]>();
-  for (const s of (sets ?? []) as SetRow[]) {
+  for (const s of sets) {
     const arr = setsByEntry.get(s.entry_id) ?? [];
     arr.push(s);
     setsByEntry.set(s.entry_id, arr);
   }
 
-  // Exercise picker data
+  const entriesWithSets = (entries ?? []).map((e: any) => ({
+    ...e,
+    sets: setsByEntry.get(e.id) ?? [],
+  }));
+
+  const planned = sets.length;
+  const completed = sets.filter((x) => x.reps !== null || x.duration_sec !== null).length;
+  const pct = planned ? Math.round((completed / planned) * 100) : 0;
+
   const { data: allExercises } = await supabase
     .from("exercises")
     .select("id,name,modality")
@@ -75,114 +101,55 @@ export default async function SessionPage({
     .order("name", { ascending: true });
 
   return (
-    <div style={{ padding: 16, maxWidth: 920, margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-        <div>
-          <div style={{ fontWeight: 700 }}>{templateName}</div>
-          <div style={{ opacity: 0.7 }}>
+    <div className="mx-auto max-w-[980px] px-4 py-6 space-y-4">
+      <header className="flex items-start justify-between gap-4">
+        <div className="space-y-2 w-full">
+          <div className="flex items-center gap-2">
+            <Button asChild variant="secondary" size="sm">
+              <Link href={`/v/${vaultId}`}>← Home</Link>
+            </Button>
+
+            <h1 className="text-sm font-semibold">
+              Current workout: <span className="font-semibold">{templateName}</span>
+            </h1>
+
+            <Badge variant="outline">{completed}/{planned}</Badge>
+          </div>
+
+          <div className="text-xs text-muted-foreground">
             Session {new Date(session.date).toLocaleString()}
           </div>
+
+          <Progress value={pct} />
         </div>
-        <Link href={`/v/${vaultId}`}>Back</Link>
-      </div>
 
-      <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
-        {(entries as unknown as EntryRow[]).map((entry) => {
-          const ex = entry.exercise;
-          const entrySets = setsByEntry.get(entry.id) ?? [];
+        <div className="flex items-center gap-2 shrink-0">
+          <form action={finishWorkout.bind(null, vaultId, sessionId)}>
+            <Button type="submit" size="sm">Finish</Button>
+          </form>
 
-          return (
-            <section
-              key={entry.id}
-              style={{ border: "1px solid #242c35", borderRadius: 14, padding: 14 }}
+          <form action={discardWorkout.bind(null, vaultId, sessionId)}>
+            <ConfirmSubmitButton
+              variant="destructive"
+              size="sm"
+              confirmText="Discard this workout? This deletes the session and all sets."
             >
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-                <div style={{ fontWeight: 600 }}>{ex.name}</div>
-                <div style={{ opacity: 0.7 }}>{ex.modality}</div>
-              </div>
+              Discard
+            </ConfirmSubmitButton>
+          </form>
+        </div>
+      </header>
 
-              <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-                {entrySets.map((set) => {
-                  const isDone = set.reps !== null || set.duration_sec !== null;
-
-                  return (
-                    <form
-                      key={set.id}
-                      action={saveSet.bind(null, vaultId, sessionId)}
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns:
-                          ex.modality === "REPS" ? "70px 90px 90px 1fr" : "70px 120px 1fr",
-                        gap: 8,
-                        alignItems: "center",
-                        padding: 10,
-                        border: "1px solid #242c35",
-                        borderRadius: 12,
-                      }}
-                    >
-                      <input type="hidden" name="set_id" value={set.id} />
-
-                      <div style={{ fontWeight: 600, opacity: isDone ? 1 : 0.7 }}>
-                        Set {set.set_index}
-                      </div>
-
-                      {ex.modality === "REPS" ? (
-                        <>
-                          <input
-                            name="weight_kg"
-                            inputMode="decimal"
-                            placeholder="kg"
-                            defaultValue={set.weight_kg ?? ""}
-                          />
-                          <input
-                            name="reps"
-                            inputMode="numeric"
-                            placeholder="reps"
-                            defaultValue={set.reps ?? ""}
-                          />
-                        </>
-                      ) : (
-                        <input
-                          name="duration_sec"
-                          inputMode="numeric"
-                          placeholder="sec"
-                          defaultValue={set.duration_sec ?? ""}
-                        />
-                      )}
-
-                      <button type="submit" style={{ justifySelf: "end" }}>
-                        Save
-                      </button>
-                    </form>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })}
-      </div>
-
-      <section style={{ marginTop: 16, border: "1px solid #242c35", borderRadius: 14, padding: 14 }}>
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>Add exercise</div>
-        <form action={addExerciseToSession.bind(null, vaultId, sessionId)} style={{ display: "flex", gap: 8 }}>
-          <select name="exercise_id" defaultValue="">
-            <option value="" disabled>
-              Select…
-            </option>
-            {(allExercises ?? []).map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.name} ({e.modality})
-              </option>
-            ))}
-          </select>
-          <button type="submit">Add (3 sets)</button>
-        </form>
-      </section>
-      <form action={finishWorkout.bind(null, vaultId, sessionId)}>
-        <button type="submit">Finish workout</button>
-        </form>
+      <SessionLogger
+        entries={entriesWithSets as any}
+        allExercises={(allExercises ?? []) as any}
+        bodyWeightKg={session.body_weight_kg as number | null}
+        updateBodyweightAction={updateBodyweight.bind(null, vaultId, sessionId)}
+        addExerciseAction={addExerciseToSession.bind(null, vaultId, sessionId)}
+        addSetAction={addSetToEntry.bind(null, vaultId, sessionId)}
+        deleteUnloggedSetAction={deleteUnloggedSet.bind(null, vaultId, sessionId)}
+        saveSetAction={saveSet.bind(null, vaultId, sessionId)}
+      />
     </div>
-
-    
   );
 }
