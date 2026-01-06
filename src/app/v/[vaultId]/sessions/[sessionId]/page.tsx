@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { addExerciseToSession, saveSet } from "./actions";
+import { addExerciseToSession, saveSet, finishWorkout  } from "./actions";
 
 type EntryRow = {
   id: string;
@@ -178,6 +178,11 @@ export default async function SessionPage({
           <button type="submit">Add (3 sets)</button>
         </form>
       </section>
+      <form action={finishWorkout.bind(null, vaultId, sessionId)}>
+        <button type="submit">Finish workout</button>
+        </form>
     </div>
+
+    
   );
 }

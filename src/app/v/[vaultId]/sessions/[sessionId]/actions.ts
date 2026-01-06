@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import type { TablesInsert } from "@/types/supabase";
+import { redirect } from "next/navigation";
 
 export async function saveSet(
   vaultId: string,
@@ -101,3 +102,18 @@ export async function addExerciseToSession(
   const { error: setsErr } = await supabase.from("sets").insert(setsPayload);
   if (setsErr) throw new Error(setsErr.message);
 }
+
+export async function finishWorkout(vaultId: string, sessionId: string) {
+    const supabase = await createClient();
+  
+    const { error } = await supabase
+      .from("workout_sessions")
+      .update({ finished_at: new Date().toISOString() })
+      .eq("id", sessionId)
+      .eq("vault_id", vaultId)
+      .is("finished_at", null);
+  
+    if (error) throw new Error(error.message);
+  
+    redirect(`/v/${vaultId}`);
+  }
