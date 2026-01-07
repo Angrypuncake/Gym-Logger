@@ -6,7 +6,7 @@ import {
   discardWorkout,
   updateBodyweight,
   addSetToEntry,
-  deleteUnloggedSet,
+  deleteUnloggedSetFromForm,
   setStartNow,
   setFinishNow,
   clearStartTime,
@@ -192,6 +192,12 @@ export default async function SessionPage({
         updateBodyweightAction={updateBodyweight.bind(null, vaultId, sessionId)}
         saveSetAction={saveSet.bind(null, vaultId, sessionId)}
         addExerciseAction={addExerciseToSession.bind(null, vaultId, sessionId)}
+        addSetAction={addSetToEntry.bind(null, vaultId, sessionId)}
+        deleteUnloggedSetAction={deleteUnloggedSetFromForm.bind(null, vaultId, sessionId)}
+
+        
+
+
       />
     </div>
   );

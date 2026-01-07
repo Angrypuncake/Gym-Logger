@@ -17,7 +17,7 @@ export function ExercisesPanel({
   entries: EntryRow[];
   selected: { entryId: string; setId: string } | null;
   onSelect: (entryId: string, setId: string) => void;
-  addSetAction?: FnForm; // expects: entry_id
+  addSetAction?: (entryId: string) => Promise<void>;
 }) {
   return (
     <Card>
@@ -49,14 +49,23 @@ export function ExercisesPanel({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <form action={addSetAction} className="contents">
-                    <input type="hidden" name="entry_id" value={entry.id} />
-                    <Button type="submit" size="sm" variant="secondary" disabled={!addSetAction}>
-                      + Set
+                {addSetAction ? (
+                    <form action={addSetAction.bind(null, entry.id)} className="contents">
+                    <Button type="submit" size="sm" variant="secondary">
+                        + Set
                     </Button>
-                  </form>
-                  <Badge variant="secondary">{total} sets</Badge>
+                    </form>
+                ) : (
+                    <Button size="sm" variant="secondary" disabled>
+                    + Set
+                    </Button>
+                )}
+
+                <Badge variant="secondary">{total} sets</Badge>
                 </div>
+
+
+                
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2">

@@ -9,12 +9,6 @@ import { isSetLogged, safeNumber } from "./utils";
 
 type SelectedSet = { entry: EntryRow; set: SetRow } | null;
 
-/**
- * Unsetting fix:
- * - Leaving an input blank should NOT clear the stored value.
- * - Blank means "keep existing".
- * - If you ever want explicit “unlog”, make it a separate action/button.
- */
 export function SelectedSetPanel({
   selectedSet,
   bodyWeightKg,
@@ -28,7 +22,8 @@ export function SelectedSetPanel({
   showTotalLoad: boolean;
   onClearSelection: () => void;
   saveSetAction?: FnForm; // expects: set_id, reps/weight_kg/duration_sec (blank = keep existing)
-  deleteUnloggedSetAction?: FnForm; // expects: set_id (only valid when unlogged)
+  deleteUnloggedSetAction?: (setId: string) => Promise<void>;
+
 }) {
   const [weightStr, setWeightStr] = React.useState("");
   const [repsStr, setRepsStr] = React.useState("");
@@ -68,7 +63,8 @@ export function SelectedSetPanel({
   const logged = selectedSet ? isSetLogged(selectedSet.set) : false;
   const canDelete = !!selectedSet && !logged && !!deleteUnloggedSetAction;
 
-  const isReps = selectedSet?.entry.exercise.modality === "REPS";
+  console.log(deleteUnloggedSetAction)
+
 
   const prevSets = React.useMemo(() => {
     if (!selectedSet) return [];
@@ -99,13 +95,6 @@ export function SelectedSetPanel({
   function applySameReps() {
     if (!lastSetWithReps) return;
     setRepsStr(String(lastSetWithReps.reps));
-  }
-
-  function clearInputsForUnset() {
-    // make submitted values ""
-    setWeightStr("");
-    setRepsStr("");
-    setDurationStr("");
   }
 
 
@@ -204,36 +193,35 @@ export function SelectedSetPanel({
             )}
 
             <div className="flex items-center gap-2">
-              <Button type="submit" className="flex-1" disabled={!saveSetAction}>
+            <Button type="submit" className="flex-1" disabled={!saveSetAction}>
                 Save set
-              </Button>
+            </Button>
 
-              
+            <Button
+                type="submit"
+                variant="secondary"
+                disabled={!saveSetAction}
+                onClick={() => {
+                setWeightStr("");
+                setRepsStr("");
+                setDurationStr("");
+                setTimeout(() => onClearSelection(), 0);
+                }}
+            >
+                Clear selection
+            </Button>
 
-              <Button
-  type="submit"
-  variant="secondary"
-  disabled={!saveSetAction}
-  onClick={() => {
-    // blank values to submit => server interprets "" as unset
-    setWeightStr("");
-    setRepsStr("");
-    setDurationStr("");
+            {canDelete && (
+            <Button type="submit" variant="destructive" formAction={deleteUnloggedSetAction}>
+                Delete
+            </Button>
+            )}
 
-    // IMPORTANT: don't unmount the form before submit
-    // If you want to clear selection, delay it:
-    setTimeout(() => onClearSelection(), 0);
-  }}
->
-  Clear selection
-</Button>
-
-              {canDelete && (
-                <Button type="submit" variant="destructive" formAction={deleteUnloggedSetAction}>
-                  Delete
-                </Button>
-              )}
             </div>
+
+
+
+
 
           </form>
         )}

@@ -293,7 +293,6 @@ export async function addSetToEntry(vaultId: string, sessionId: string, entryId:
 }
 
 export async function deleteUnloggedSet(vaultId: string, sessionId: string, setId: string) {
-  await (sessionId);
   const supabase = await createClient();
 
   const { data: s, error: readErr } = await supabase
@@ -304,6 +303,7 @@ export async function deleteUnloggedSet(vaultId: string, sessionId: string, setI
     .single();
 
   if (readErr) throw new Error(readErr.message);
+  if (!s) throw new Error("Set not found.");
 
   // verify set belongs to session
   const { data: entry, error: eErr } = await supabase
@@ -499,3 +499,39 @@ export async function clearFinishTime(vaultId: string, sessionId: string) {
   const supabase = await createClient();
   await updateSessionTimes(supabase, vaultId, sessionId, { finished_at: null });
 }
+export async function deleteUnloggedSetFromForm(vaultId: string, sessionId: string, formData: FormData) {
+  const setId = String(formData.get("set_id") ?? "");
+  if (!setId) throw new Error("Missing set_id");
+
+  const supabase = await createClient();
+
+  const { data: s, error: readErr } = await supabase
+    .from("sets")
+    .select("id,entry_id,reps,weight_kg,duration_sec")
+    .eq("vault_id", vaultId)
+    .eq("id", setId)
+    .single();
+
+  if (readErr) throw new Error(readErr.message);
+  if (!s) throw new Error("Set not found.");
+
+  const { data: entry, error: eErr } = await supabase
+    .from("workout_entries")
+    .select("id")
+    .eq("vault_id", vaultId)
+    .eq("session_id", sessionId)
+    .eq("id", s.entry_id)
+    .single();
+
+  if (eErr) throw new Error(eErr.message);
+  if (!entry) throw new Error("Set not found for this session.");
+
+  const isLogged = s.reps !== null || s.weight_kg !== null || s.duration_sec !== null;
+  if (isLogged) throw new Error("Cannot delete a logged set. Clear it first.");
+
+  const { error: delErr } = await supabase.from("sets").delete().eq("vault_id", vaultId).eq("id", setId);
+  if (delErr) throw new Error(delErr.message);
+
+  revalidatePath(`/v/${vaultId}/sessions/${sessionId}`);
+}
+

@@ -25,8 +25,8 @@ export default function SessionLogger({
 
   updateBodyweightAction?: FnForm;
   addExerciseAction?: FnForm;
-  addSetAction?: FnForm; // expects: entry_id
-  deleteUnloggedSetAction?: FnForm; // expects: set_id
+  addSetAction?: (entryId: string) => void | Promise<void>;
+  deleteUnloggedSetAction?: (setId: string) => Promise<void>;
   saveSetAction?: FnForm; // expects: set_id + fields (blank = keep existing)
 }) {
   const [showTotalLoad, setShowTotalLoad] = React.useState(false);
@@ -54,6 +54,8 @@ export default function SessionLogger({
         selected={selected}
         onSelect={(entryId, setId) => setSelected({ entryId, setId })}
         addSetAction={addSetAction}
+        
+        
       />
 
       <SelectedSetPanel
@@ -63,6 +65,7 @@ export default function SessionLogger({
         onClearSelection={() => setSelected(null)}
         saveSetAction={saveSetAction}
         deleteUnloggedSetAction={deleteUnloggedSetAction}
+        
       />
 
       <div className="space-y-4">
