@@ -7,19 +7,6 @@ import { revalidatePath } from "next/cache";
 
 type PrType = "REPS_MAX_WEIGHT" | "REPS_MAX_REPS" | "ISO_MAX_DURATION";
 
-async function assertSessionActive(supabase: any, vaultId: string, sessionId: string) {
-  const { data, error } = await supabase
-    .from("workout_sessions")
-    .select("id, finished_at")
-    .eq("vault_id", vaultId)
-    .eq("id", sessionId)
-    .single();
-
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Session not found.");
-  if (data.finished_at !== null) throw new Error("Session is already finished.");
-}
-
 async function maybeRecordPr(params: {
   supabase: any;
   vaultId: string;
@@ -206,7 +193,7 @@ export async function saveSet(vaultId: string, sessionId: string, formData: Form
 
 
 export async function addExerciseToSession(vaultId: string, sessionId: string, formData: FormData) {
-  await assertSessionAllowsStructuralEdit(vaultId, sessionId);
+  await (sessionId);
   const exerciseId = String(formData.get("exercise_id") || "").trim();
   if (!exerciseId) return;
 
@@ -264,7 +251,7 @@ export async function addExerciseToSession(vaultId: string, sessionId: string, f
 }
 
 export async function addSetToEntry(vaultId: string, sessionId: string, entryId: string) {
-  await assertSessionAllowsStructuralEdit(vaultId, sessionId);
+  await (sessionId);
   const supabase = await createClient();
 
   // Ensure entry belongs to this session
@@ -307,7 +294,7 @@ export async function addSetToEntry(vaultId: string, sessionId: string, entryId:
 }
 
 export async function deleteUnloggedSet(vaultId: string, sessionId: string, setId: string) {
-  await assertSessionAllowsStructuralEdit(vaultId, sessionId);
+  await (sessionId);
   const supabase = await createClient();
 
   const { data: s, error: readErr } = await supabase
@@ -383,11 +370,8 @@ export async function finishWorkout(vaultId: string, sessionId: string) {
 }
 
 export async function discardWorkout(vaultId: string, sessionId: string) {
-  await assertSessionAllowsStructuralEdit(vaultId, sessionId);
+  await (sessionId);
   const supabase = await createClient();
-
-  // Only allow discarding an ACTIVE session (safety)
-  await assertSessionActive(supabase, vaultId, sessionId);
 
   const { data: entries, error: eErr } = await supabase
     .from("workout_entries")
@@ -442,12 +426,6 @@ async function getSessionFinishedAt(vaultId: string, sessionId: string) {
   if (error) throw new Error(error.message);
   return data?.finished_at ?? null;
 }
-
-async function assertSessionAllowsStructuralEdit(vaultId: string, sessionId: string) {
-  const finishedAt = await getSessionFinishedAt(vaultId, sessionId);
-  if (finishedAt) throw new Error("Workout is completed. Structural edits are disabled.");
-}
-
 
 async function getSessionTimes(supabase: any, vaultId: string, sessionId: string) {
   const { data, error } = await supabase

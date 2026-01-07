@@ -186,15 +186,12 @@ export default async function SessionPage({
       </header>
 
       <SessionLogger
-        readOnly={false}
         entries={entriesWithSets as any}
         allExercises={(allExercises ?? []) as any}
         bodyWeightKg={session.body_weight_kg as number | null}
         updateBodyweightAction={updateBodyweight.bind(null, vaultId, sessionId)}
         saveSetAction={saveSet.bind(null, vaultId, sessionId)}
         addExerciseAction={addExerciseToSession.bind(null, vaultId, sessionId)}
-        addSetAction={addSetToEntry.bind(null, vaultId, sessionId)}
-        deleteUnloggedSetAction={deleteUnloggedSet.bind(null, vaultId, sessionId)}
       />
     </div>
   );

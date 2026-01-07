@@ -11,6 +11,9 @@ import { Card } from "@/components/ui/card";
 // IMPORTANT: server action (new flow: create session for a day + template)
 import { createSessionAction } from "./actions";
 
+import { discardWorkout } from "./[sessionId]/actions";
+import ConfirmSubmitButton from "./[sessionId]/ConfirmSubmitButton";
+
 type SummaryRow = {
   session_id: string;
   template_id: string;
@@ -293,25 +296,43 @@ function DayPanel({
       ) : (
         <div className="space-y-2">
           {ordered.map((s) => {
-            const pct = pctDone(s);
-            const timeLabel = s.finished_at ? "End time set" : "No end time";
+  const pct = pctDone(s);
 
-            return (
-              <div key={s.session_id} className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium truncate">{s.template_name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {s.logged_sets}/{s.planned_sets} · {pct}% · {timeLabel}
-                    {s.has_pr ? " · PR" : ""}
-                  </div>
-                </div>
+  return (
+    <div
+      key={s.session_id}
+      className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
+    >
+      <div className="min-w-0">
+        <div className="text-sm font-medium truncate">
+          {s.template_name}
+        </div>
 
-                <Link href={`/v/${vaultId}/sessions/${s.session_id}`}>
-                  <Button size="sm">Open</Button>
-                </Link>
-              </div>
-            );
-          })}
+        <div className="text-xs text-muted-foreground">
+          {s.logged_sets}/{s.planned_sets} · {pct}%
+          {s.has_pr && " · PR"}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 shrink-0">
+        <Link href={`/v/${vaultId}/sessions/${s.session_id}`}>
+          <Button size="sm">Open</Button>
+        </Link>
+
+        <form action={discardWorkout.bind(null, vaultId, s.session_id)}>
+          <ConfirmSubmitButton
+            variant="destructive"
+            size="sm"
+            confirmText="Discard this session? This deletes the session and all entries/sets."
+          >
+            Discard
+          </ConfirmSubmitButton>
+        </form>
+      </div>
+    </div>
+  );
+})}
+
         </div>
       )}
     </Card>
