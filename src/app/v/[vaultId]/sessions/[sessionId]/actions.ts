@@ -535,3 +535,56 @@ export async function deleteUnloggedSetFromForm(vaultId: string, sessionId: stri
   revalidatePath(`/v/${vaultId}/sessions/${sessionId}`);
 }
 
+
+export async function setStartAtFromForm(
+  vaultId: string,
+  sessionId: string,
+  formData: FormData
+) {
+  const supabase = await createClient();
+  const t = await getSessionTimes(supabase, vaultId, sessionId);
+
+  const raw = String(formData.get("started_at") ?? "");
+  if (!raw) throw new Error("Missing started_at");
+
+  // raw is "YYYY-MM-DDTHH:mm" (datetime-local). Interpreted as local time.
+  const iso = new Date(raw).toISOString();
+
+  const patch: { started_at: string; finished_at?: string } = { started_at: iso };
+
+  // preserve CHECK (finished_at >= started_at)
+  if (t.finished_at) {
+    const fin = new Date(t.finished_at).getTime();
+    const start = new Date(iso).getTime();
+    if (fin < start) patch.finished_at = iso;
+  }
+
+  await updateSessionTimes(supabase, vaultId, sessionId, patch);
+  revalidatePath(`/v/${vaultId}/sessions/${sessionId}`);
+}
+
+export async function setFinishAtFromForm(
+  vaultId: string,
+  sessionId: string,
+  formData: FormData
+) {
+  const supabase = await createClient();
+  const t = await getSessionTimes(supabase, vaultId, sessionId);
+
+  const raw = String(formData.get("finished_at") ?? "");
+  if (!raw) throw new Error("Missing finished_at");
+
+  const iso = new Date(raw).toISOString();
+
+  const patch: { finished_at: string; started_at?: string } = { finished_at: iso };
+
+  // preserve CHECK (finished_at >= started_at)
+  if (t.started_at) {
+    const start = new Date(t.started_at).getTime();
+    const fin = new Date(iso).getTime();
+    if (start > fin) patch.started_at = iso;
+  }
+
+  await updateSessionTimes(supabase, vaultId, sessionId, patch);
+  revalidatePath(`/v/${vaultId}/sessions/${sessionId}`);
+}
