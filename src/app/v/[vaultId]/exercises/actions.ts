@@ -3,6 +3,7 @@
 import { createExercise, deleteExercise, updateExercise } from "@/db/exercises";
 import type { Enums } from "@/types/supabase";
 import { revalidatePath } from "next/cache";
+import { listAnatomicalTargets, listExerciseTargets, setExerciseTargets } from "@/db/anatomy";
 
 export async function addExercise(vaultId: string, formData: FormData) {
   const name = String(formData.get("name") || "").trim();
@@ -40,4 +41,42 @@ export async function updateExerciseAction(
   // Optional: if Next ends up caching by searchParams separately in your setup,
   // you can also revalidate the "selected" variant:
   revalidatePath(`/v/${vaultId}/exercises?edit=${exerciseId}`);
+}
+
+type AnatomicalTargetRole = Enums<"anatomical_target_role">;
+
+
+export async function updateExerciseTargetsAction(
+  vaultId: string, // keep for revalidatePath only
+  exerciseId: string,
+  formData: FormData
+) {
+  const targetIds = formData.getAll("target_id").map(String).filter(Boolean);
+
+  const picks = targetIds.map((id) => {
+    const role = formData.get(`role:${id}`) as AnatomicalTargetRole | null;
+    return { target_id: id, role: (role ?? "SECONDARY") as AnatomicalTargetRole };
+  });
+
+  // enforce at most one PRIMARY
+  let seenPrimary = false;
+  for (const p of picks) {
+    if (p.role === "PRIMARY") {
+      if (seenPrimary) p.role = "SECONDARY";
+      seenPrimary = true;
+    }
+  }
+
+  await setExerciseTargets(vaultId, exerciseId, picks);
+
+  // still revalidate vault page
+  // revalidatePath(`/v/${vaultId}/exercises`);
+}
+
+export async function fetchMuscleGroups() {
+  return await listAnatomicalTargets({ kind: "MUSCLE_GROUP" });
+}
+
+export async function fetchExerciseMuscleTargets(exerciseId: string) {
+  return await listExerciseTargets(exerciseId);
 }

@@ -47,7 +47,6 @@ export type Database = {
           name: string
           parent_id: string | null
           slug: string
-          vault_id: string
         }
         Insert: {
           created_at?: string
@@ -56,7 +55,6 @@ export type Database = {
           name: string
           parent_id?: string | null
           slug: string
-          vault_id: string
         }
         Update: {
           created_at?: string
@@ -65,7 +63,6 @@ export type Database = {
           name?: string
           parent_id?: string | null
           slug?: string
-          vault_id?: string
         }
         Relationships: [
           {
@@ -73,13 +70,6 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "anatomical_targets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "anatomical_targets_vault_id_fkey"
-            columns: ["vault_id"]
-            isOneToOne: false
-            referencedRelation: "vaults"
             referencedColumns: ["id"]
           },
         ]
@@ -614,7 +604,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      anatomical_target_kind: "MUSCLE_GROUP" | "TENDON"
+      anatomical_target_kind: "MUSCLE_GROUP" | "TENDON" | "MUSCLE"
       anatomical_target_role: "PRIMARY" | "SECONDARY" | "STABILIZER"
       modality: "REPS" | "ISOMETRIC"
       pr_type: "REPS_MAX_WEIGHT" | "REPS_MAX_REPS" | "ISO_MAX_DURATION"
@@ -748,7 +738,7 @@ export const Constants = {
   },
   public: {
     Enums: {
-      anatomical_target_kind: ["MUSCLE_GROUP", "TENDON"],
+      anatomical_target_kind: ["MUSCLE_GROUP", "TENDON", "MUSCLE"],
       anatomical_target_role: ["PRIMARY", "SECONDARY", "STABILIZER"],
       modality: ["REPS", "ISOMETRIC"],
       pr_type: ["REPS_MAX_WEIGHT", "REPS_MAX_REPS", "ISO_MAX_DURATION"],

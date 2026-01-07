@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
-import { removeExercise, updateExerciseAction } from "./actions";
+import { removeExercise, updateExerciseAction, updateExerciseTargetsAction } from "./actions";
+import { listAnatomicalTargets, listExerciseTargets } from "@/db/anatomy";
+import { MuscleRoleBoard } from "./MuscleRoleBoard";
 
 type Exercise = {
   id: string;
@@ -13,7 +15,7 @@ type Exercise = {
   uses_bodyweight: boolean;
 };
 
-export function ExerciseEditorPanel({
+export async function ExerciseEditorPanel({
   vaultId,
   exercise,
 }: {
@@ -35,6 +37,14 @@ export function ExerciseEditorPanel({
     );
   }
 
+  const muscleGroups = await listAnatomicalTargets({ kind: "MUSCLE_GROUP" });
+
+  // FIX: include exercise.id
+  const existing = await listExerciseTargets(exercise.id);
+  console.log(existing)
+
+  const initialSelected = Object.fromEntries(existing.map((x) => [x.target.id, x.role]));
+
   return (
     <Card>
       <CardHeader className="pb-3 space-y-2">
@@ -53,62 +63,39 @@ export function ExerciseEditorPanel({
       </CardHeader>
 
       <CardContent className="pt-0 space-y-4">
+        <form action={updateExerciseAction.bind(null, vaultId, exercise.id)} className="space-y-4">
+          {/* unchanged */}
+          ...
+        </form>
+
+        <Separator />
+
         <form
-          action={updateExerciseAction.bind(null, vaultId, exercise.id)}
-          className="space-y-4"
+          action={updateExerciseTargetsAction.bind(null, vaultId, exercise.id)}
+          className="space-y-3"
         >
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Name</label>
-            <input
-              name="name"
-              defaultValue={exercise.name}
-              required
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          <div className="text-sm font-medium">Muscle groups</div>
+
+          {muscleGroups.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No muscle groups seeded yet.</div>
+          ) : (
+            <MuscleRoleBoard
+              targets={muscleGroups.map((g) => ({ id: g.id, name: g.name }))}
+              initialSelected={initialSelected as Record<string, "PRIMARY" | "SECONDARY" | "STABILIZER">}
             />
-          </div>
+            
+          )}
+          
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Modality</label>
-            <select
-              name="modality"
-              defaultValue={exercise.modality}
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="REPS">REPS</option>
-              <option value="ISOMETRIC">ISOMETRIC</option>
-            </select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <input
-              id="uses_bodyweight"
-              type="checkbox"
-              name="uses_bodyweight"
-              defaultChecked={exercise.uses_bodyweight}
-            />
-            <label htmlFor="uses_bodyweight" className="text-sm">
-              Uses bodyweight
-            </label>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button type="submit" className="active:scale-95 transition-transform">
-              Save
-            </Button>
-            <Button asChild type="button" variant="secondary">
-              <Link href={clearHref}>Done</Link>
-            </Button>
-          </div>
+          <Button type="submit" size="sm" className="active:scale-95 transition-transform">
+            Save muscle groups
+          </Button>
         </form>
 
         <Separator />
 
         <form action={removeExercise.bind(null, vaultId, exercise.id)}>
-          <Button
-            type="submit"
-            variant="destructive"
-            className="active:scale-95 transition-transform"
-          >
+          <Button type="submit" variant="destructive" className="active:scale-95 transition-transform">
             Delete exercise
           </Button>
         </form>
