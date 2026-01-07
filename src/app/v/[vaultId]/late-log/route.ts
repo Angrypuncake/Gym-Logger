@@ -7,61 +7,35 @@ export async function POST(
 ) {
   const { vaultId } = await params;
   const form = await req.formData();
-  const templateId = String(form.get("template_id") || "").trim();
 
-  if (!templateId) {
-    return NextResponse.json({ error: "missing template_id" }, { status: 400 });
-  }
+  const templateId = String(form.get("template_id") || "").trim();
+  const day = String(form.get("day") || "").trim(); // YYYY-MM-DD
+
+  if (!templateId) return NextResponse.json({ error: "missing template_id" }, { status: 400 });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return NextResponse.json({ error: "invalid day" }, { status: 400 });
 
   const supabase = await createClient();
+  const nowIso = new Date().toISOString();
 
-  // 0) Enforce single active: resume if exists
-  const { data: active, error: aErr } = await supabase
-    .from("workout_sessions")
-    .select("id")
-    .eq("vault_id", vaultId)
-    .is("finished_at", null)
-    .order("date", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (aErr) return NextResponse.json({ error: aErr.message }, { status: 500 });
-
-  if (active?.id) {
-    return NextResponse.redirect(new URL(`/v/${vaultId}/sessions/${active.id}`, req.url));
-  }
-
-  // 1) Create session
+  // Create a finished session (does NOT violate single-active constraint)
   const { data: session, error: sErr } = await supabase
     .from("workout_sessions")
     .insert({
       vault_id: vaultId,
       template_id: templateId,
       planned_template_id: templateId,
-      // session_date omitted; trigger fills from date (Sydney)
+      session_date: day,
+      date: nowIso,
+      finished_at: nowIso,
     } as any)
     .select("id")
     .single();
 
-  // If unique index raced, redirect to now-existing active session
-  if (sErr) {
-    const { data: raced } = await supabase
-      .from("workout_sessions")
-      .select("id")
-      .eq("vault_id", vaultId)
-      .is("finished_at", null)
-      .order("date", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+  if (sErr) return NextResponse.json({ error: sErr.message }, { status: 500 });
 
-    if (raced?.id) {
-      return NextResponse.redirect(new URL(`/v/${vaultId}/sessions/${raced.id}`, req.url));
-    }
+  const sessionId = session.id as string;
 
-    return NextResponse.json({ error: sErr.message }, { status: 500 });
-  }
-
-  // 2) Load template items
+  // Load template items
   const { data: tItems, error: tErr } = await supabase
     .from("template_items")
     .select("exercise_id,order,target_sets")
@@ -71,10 +45,10 @@ export async function POST(
 
   if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 });
 
-  // 3) Insert workout entries
+  // Insert entries
   const entriesPayload = (tItems ?? []).map((it) => ({
     vault_id: vaultId,
-    session_id: session.id,
+    session_id: sessionId,
     exercise_id: it.exercise_id,
     order: it.order,
   }));
@@ -86,7 +60,7 @@ export async function POST(
 
   if (eErr) return NextResponse.json({ error: eErr.message }, { status: 500 });
 
-  // 4) Insert planned sets
+  // Insert planned sets
   const entryByOrder = new Map<number, string>();
   for (const e of entries ?? []) entryByOrder.set(e.order, e.id);
 
@@ -105,5 +79,5 @@ export async function POST(
     if (setsErr) return NextResponse.json({ error: setsErr.message }, { status: 500 });
   }
 
-  return NextResponse.redirect(new URL(`/v/${vaultId}/sessions/${session.id}`, req.url));
+  return NextResponse.redirect(new URL(`/v/${vaultId}/sessions/${sessionId}`, req.url));
 }

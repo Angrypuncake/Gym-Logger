@@ -39,6 +39,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      exercise_prs: {
+        Row: {
+          achieved_at: string
+          exercise_id: string
+          id: string
+          pr_type: Database["public"]["Enums"]["pr_type"]
+          session_id: string
+          set_id: string
+          value: number
+          vault_id: string
+        }
+        Insert: {
+          achieved_at?: string
+          exercise_id: string
+          id?: string
+          pr_type: Database["public"]["Enums"]["pr_type"]
+          session_id: string
+          set_id: string
+          value: number
+          vault_id: string
+        }
+        Update: {
+          achieved_at?: string
+          exercise_id?: string
+          id?: string
+          pr_type?: Database["public"]["Enums"]["pr_type"]
+          session_id?: string
+          set_id?: string
+          value?: number
+          vault_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_prs_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_prs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_summaries"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "exercise_prs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "workout_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_prs_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "sets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_prs_vault_id_fkey"
+            columns: ["vault_id"]
+            isOneToOne: false
+            referencedRelation: "vaults"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercises: {
         Row: {
           id: string
@@ -64,6 +133,75 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "exercises_vault_fk"
+            columns: ["vault_id"]
+            isOneToOne: false
+            referencedRelation: "vaults"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pr_events: {
+        Row: {
+          achieved_at: string
+          exercise_id: string
+          id: string
+          pr_type: Database["public"]["Enums"]["pr_type"]
+          session_id: string
+          set_id: string
+          value: number
+          vault_id: string
+        }
+        Insert: {
+          achieved_at?: string
+          exercise_id: string
+          id?: string
+          pr_type: Database["public"]["Enums"]["pr_type"]
+          session_id: string
+          set_id: string
+          value: number
+          vault_id: string
+        }
+        Update: {
+          achieved_at?: string
+          exercise_id?: string
+          id?: string
+          pr_type?: Database["public"]["Enums"]["pr_type"]
+          session_id?: string
+          set_id?: string
+          value?: number
+          vault_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pr_events_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pr_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_summaries"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "pr_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "workout_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pr_events_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "sets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pr_events_vault_id_fkey"
             columns: ["vault_id"]
             isOneToOne: false
             referencedRelation: "vaults"
@@ -252,6 +390,13 @@ export type Database = {
             foreignKeyName: "workout_entries_session_fk"
             columns: ["session_id"]
             isOneToOne: false
+            referencedRelation: "session_summaries"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "workout_entries_session_fk"
+            columns: ["session_id"]
+            isOneToOne: false
             referencedRelation: "workout_sessions"
             referencedColumns: ["id"]
           },
@@ -271,6 +416,10 @@ export type Database = {
           finished_at: string | null
           id: string
           notes: string | null
+          planned_template_id: string | null
+          rpe: number | null
+          session_date: string
+          tags: string[] | null
           template_id: string
           vault_id: string
         }
@@ -280,6 +429,10 @@ export type Database = {
           finished_at?: string | null
           id?: string
           notes?: string | null
+          planned_template_id?: string | null
+          rpe?: number | null
+          session_date: string
+          tags?: string[] | null
           template_id: string
           vault_id: string
         }
@@ -289,10 +442,21 @@ export type Database = {
           finished_at?: string | null
           id?: string
           notes?: string | null
+          planned_template_id?: string | null
+          rpe?: number | null
+          session_date?: string
+          tags?: string[] | null
           template_id?: string
           vault_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "workout_sessions_planned_template_fk"
+            columns: ["planned_template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "workout_sessions_template_fk"
             columns: ["template_id"]
@@ -311,13 +475,56 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      session_summaries: {
+        Row: {
+          body_weight_kg: number | null
+          exercise_count: number | null
+          finished_at: string | null
+          has_pr: boolean | null
+          logged_sets: number | null
+          modalities: string[] | null
+          planned_sets: number | null
+          planned_template_id: string | null
+          rpe: number | null
+          session_date: string | null
+          session_id: string | null
+          started_at: string | null
+          tags: string[] | null
+          template_id: string | null
+          template_name: string | null
+          vault_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_sessions_planned_template_fk"
+            columns: ["planned_template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_sessions_template_fk"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_sessions_vault_fk"
+            columns: ["vault_id"]
+            isOneToOne: false
+            referencedRelation: "vaults"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       [_ in never]: never
     }
     Enums: {
       modality: "REPS" | "ISOMETRIC"
+      pr_type: "REPS_MAX_WEIGHT" | "REPS_MAX_REPS" | "ISO_MAX_DURATION"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -449,6 +656,7 @@ export const Constants = {
   public: {
     Enums: {
       modality: ["REPS", "ISOMETRIC"],
+      pr_type: ["REPS_MAX_WEIGHT", "REPS_MAX_REPS", "ISO_MAX_DURATION"],
     },
   },
 } as const

@@ -14,16 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 
-
-
 import SessionLogger from "./SessionLogger";
 import ConfirmSubmitButton from "./ConfirmSubmitButton";
-
-type EntryRow = {
-  id: string;
-  order: number;
-  exercise: { id: string; name: string; modality: "REPS" | "ISOMETRIC"; uses_bodyweight?: boolean };
-};
 
 type SetRow = {
   id: string;
@@ -44,12 +36,23 @@ export default async function SessionPage({
 
   const { data: session, error: sErr } = await supabase
     .from("workout_sessions")
-    .select("id,date,notes,body_weight_kg, template:templates(name)")
+    .select(`
+      id,
+      date,
+      session_date,
+      notes,
+      body_weight_kg,
+      finished_at,
+      template:templates!workout_sessions_template_fk(name)
+    `)
     .eq("vault_id", vaultId)
     .eq("id", sessionId)
     .single();
 
   if (sErr) return <pre>{sErr.message}</pre>;
+  if (!session) return <pre>Session not found</pre>;
+
+  const isActive = session.finished_at === null;
 
   const templateName =
     (session.template as unknown as { name: string } | null)?.name ?? "Workout";
@@ -63,7 +66,7 @@ export default async function SessionPage({
 
   if (eErr) return <pre>{eErr.message}</pre>;
 
-  const entryIds = (entries ?? []).map((e) => e.id);
+  const entryIds = (entries ?? []).map((e: any) => e.id);
 
   let sets: SetRow[] = [];
   if (entryIds.length > 0) {
@@ -91,7 +94,7 @@ export default async function SessionPage({
   }));
 
   const planned = sets.length;
-  const completed = sets.filter((x) => x.reps !== null || x.duration_sec !== null).length;
+  const completed = sets.filter((x) => x.reps !== null || x.duration_sec !== null || x.weight_kg !== null).length;
   const pct = planned ? Math.round((completed / planned) * 100) : 0;
 
   const { data: allExercises } = await supabase
@@ -110,37 +113,42 @@ export default async function SessionPage({
             </Button>
 
             <h1 className="text-sm font-semibold">
-              Current workout: <span className="font-semibold">{templateName}</span>
+              {isActive ? "Current workout:" : "Workout:"}{" "}
+              <span className="font-semibold">{templateName}</span>
             </h1>
 
             <Badge variant="outline">{completed}/{planned}</Badge>
+            {!isActive && <Badge variant="secondary">Completed</Badge>}
           </div>
 
           <div className="text-xs text-muted-foreground">
-            Session {new Date(session.date).toLocaleString()}
+            Session {session.session_date ?? new Date(session.date).toLocaleDateString()}
           </div>
 
           <Progress value={pct} />
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <form action={finishWorkout.bind(null, vaultId, sessionId)}>
-            <Button type="submit" size="sm">Finish</Button>
-          </form>
+        {isActive && (
+          <div className="flex items-center gap-2 shrink-0">
+            <form action={finishWorkout.bind(null, vaultId, sessionId)}>
+              <Button type="submit" size="sm">Finish</Button>
+            </form>
 
-          <form action={discardWorkout.bind(null, vaultId, sessionId)}>
-            <ConfirmSubmitButton
-              variant="destructive"
-              size="sm"
-              confirmText="Discard this workout? This deletes the session and all sets."
-            >
-              Discard
-            </ConfirmSubmitButton>
-          </form>
-        </div>
+            <form action={discardWorkout.bind(null, vaultId, sessionId)}>
+              <ConfirmSubmitButton
+                variant="destructive"
+                size="sm"
+                confirmText="Discard this workout? This deletes the session and all sets."
+              >
+                Discard
+              </ConfirmSubmitButton>
+            </form>
+          </div>
+        )}
       </header>
 
       <SessionLogger
+        readOnly={false}
         entries={entriesWithSets as any}
         allExercises={(allExercises ?? []) as any}
         bodyWeightKg={session.body_weight_kg as number | null}

@@ -1,109 +1,145 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import CalendarClient from "./CalendarClient";
+import { quickLogSet } from "./actions";
 
-function formatDate(d: string) {
-  const dt = new Date(d);
-  return dt.toLocaleString();
+type SummaryRow = {
+  session_id: string;
+  vault_id: string;
+  template_id: string;
+  template_name: string;
+  session_date: string; // YYYY-MM-DD
+  started_at: string;
+  finished_at: string | null;
+  planned_sets: number;
+  logged_sets: number;
+  total_reps: number;
+  total_iso_sec: number;
+  modalities: string[];
+  has_pr: boolean;
+};
+
+function sydneyKey(d: Date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Australia/Sydney",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
 }
 
-export default async function SessionsHistoryPage({
+function monthStartKey(year: number, month0: number) {
+  return sydneyKey(new Date(Date.UTC(year, month0, 1)));
+}
+function monthEndKey(year: number, month0: number) {
+  return sydneyKey(new Date(Date.UTC(year, month0 + 1, 0)));
+}
+
+export default async function SessionsCalendarPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ vaultId: string }>;
+  searchParams: Promise<{ y?: string; m?: string }>;
 }) {
   const { vaultId } = await params;
+  const sp = await searchParams;
+
+  const now = new Date();
+  const y = sp.y ? Number(sp.y) : now.getUTCFullYear();
+  const m = sp.m ? Number(sp.m) : now.getUTCMonth();
+
   const supabase = await createClient();
 
-  // Completed sessions only
-  const { data: sessions, error: sErr } = await supabase
-    .from("workout_sessions")
-    .select("id,date,finished_at, template:templates(name)")
+  const { data: summariesRaw, error } = await supabase
+    .from("session_summaries" as any)
+    .select("*")
     .eq("vault_id", vaultId)
-    .not("finished_at", "is", null)
-    .order("finished_at", { ascending: false })
-    .limit(50);
+    .gte("session_date", monthStartKey(y, m))
+    .lte("session_date", monthEndKey(y, m))
+    .order("session_date", { ascending: true })
+    .order("started_at", { ascending: true });
 
-  if (sErr) return <pre>{sErr.message}</pre>;
+  if (error) return <pre>{error.message}</pre>;
+  const summaries = (summariesRaw ?? []) as SummaryRow[];
 
-  const sessionIds = (sessions ?? []).map((s) => s.id);
-
-  // Pull sets for these sessions and compute completion stats
-  // Completed set = reps != null OR duration_sec != null
-  const { data: sets, error: setsErr } = await supabase
-    .from("sets")
-    .select("reps,duration_sec, workout_entries!inner(session_id)")
+  const { data: templates, error: tErr } = await supabase
+    .from("templates")
+    .select("id,name,order")
     .eq("vault_id", vaultId)
-    .in("workout_entries.session_id", sessionIds);
+    .order("order", { ascending: true });
 
-  if (setsErr) return <pre>{setsErr.message}</pre>;
+  if (tErr) return <pre>{tErr.message}</pre>;
 
-  const stats = new Map<string, { total: number; done: number }>();
-  for (const row of sets ?? []) {
-    const sid = (row.workout_entries as unknown as { session_id: string }).session_id;
-    const cur = stats.get(sid) ?? { total: 0, done: 0 };
-    cur.total += 1;
-    if (row.reps !== null || row.duration_sec !== null) cur.done += 1;
-    stats.set(sid, cur);
+  const { data: exercises, error: exErr } = await supabase
+    .from("exercises")
+    .select("id,name,modality")
+    .eq("vault_id", vaultId)
+    .order("name", { ascending: true });
+
+  if (exErr) return <pre>{exErr.message}</pre>;
+
+  // Adherence: streak + this-week count (Sydney)
+  const since = new Date(now);
+  since.setUTCDate(now.getUTCDate() - 180);
+
+  const { data: adherenceRaw } = await supabase
+    .from("session_summaries" as any)
+    .select("session_date,finished_at,logged_sets")
+    .eq("vault_id", vaultId)
+    .gte("session_date", sydneyKey(since))
+    .lte("session_date", sydneyKey(now));
+
+  const trainedDays = new Set(
+    (adherenceRaw ?? [])
+      .filter((r: any) => r.finished_at !== null && Number(r.logged_sets ?? 0) > 0)
+      .map((r: any) => r.session_date)
+  );
+
+  let streak = 0;
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(now);
+    d.setUTCDate(now.getUTCDate() - i);
+    const key = sydneyKey(d);
+    if (trainedDays.has(key)) streak++;
+    else break;
+  }
+
+  // Week count (Mon..Sun in Sydney)
+  const weekdayShort = new Intl.DateTimeFormat("en-US", { timeZone: "Australia/Sydney", weekday: "short" }).format(now);
+  const order = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const offset = Math.max(0, order.indexOf(weekdayShort));
+  const weekStart = new Date(now);
+  weekStart.setUTCDate(now.getUTCDate() - offset);
+
+  let weekCount = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setUTCDate(weekStart.getUTCDate() + i);
+    if (trainedDays.has(sydneyKey(d))) weekCount++;
   }
 
   return (
-    <div style={{ padding: 16, maxWidth: 860, margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
-        <h1 style={{ margin: 0, fontSize: 16 }}>Workout history</h1>
-        <div style={{ display: "flex", gap: 10 }}>
-          <Link href={`/v/${vaultId}`}>Home</Link>
+    <div className="mx-auto max-w-[980px] px-4 py-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <Link href={`/v/${vaultId}`} className="text-sm text-muted-foreground hover:underline">
+          ← Home
+        </Link>
+        <div className="text-sm text-muted-foreground">
+          Streak: <span className="font-medium text-foreground">{streak}</span> · This week:{" "}
+          <span className="font-medium text-foreground">{weekCount}</span>
         </div>
       </div>
 
-      {(sessions?.length ?? 0) === 0 ? (
-        <div style={{ opacity: 0.7 }}>No completed workouts yet.</div>
-      ) : (
-        <div style={{ border: "1px solid #242c35", borderRadius: 14, overflow: "hidden" }}>
-          {(sessions ?? []).map((s, idx) => {
-            const templateName =
-              (s.template as unknown as { name: string } | null)?.name ?? "Workout";
-            const st = stats.get(s.id) ?? { total: 0, done: 0 };
-            const pct = st.total === 0 ? 0 : Math.round((st.done / st.total) * 100);
-
-            return (
-              <div
-                key={s.id}
-                style={{
-                  padding: 14,
-                  borderTop: idx === 0 ? "none" : "1px solid #242c35",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  alignItems: "center",
-                }}
-              >
-                <div>
-                  <div style={{ fontWeight: 600 }}>{templateName}</div>
-                  <div style={{ opacity: 0.7 }}>
-                    Finished: {s.finished_at ? formatDate(s.finished_at) : "—"} · Started:{" "}
-                    {formatDate(s.date)}
-                  </div>
-                </div>
-
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  <span
-                    style={{
-                      opacity: 0.8,
-                      border: "1px solid #242c35",
-                      padding: "6px 10px",
-                      borderRadius: 999,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {pct}% · {st.done}/{st.total} sets
-                  </span>
-                  <Link href={`/v/${vaultId}/sessions/${s.id}`}>View</Link>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <CalendarClient
+        vaultId={vaultId}
+        year={y}
+        month0={m}
+        summaries={summaries as any}
+        templates={(templates ?? []) as any}
+        exercises={(exercises ?? []) as any}
+        quickLogAction={quickLogSet.bind(null, vaultId)}
+      />
     </div>
   );
 }
