@@ -276,7 +276,7 @@ export async function addSetToEntry(vaultId: string, sessionId: string, entryId:
 
   if (lastErr) throw new Error(lastErr.message);
 
-  const nextIndex = (last?.set_index ?? 0) + 1;
+  const nextIndex = (last?.set_index ?? 0);
 
   const { error } = await supabase.from("sets").insert({
     vault_id: vaultId,

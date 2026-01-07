@@ -104,7 +104,7 @@ export function SelectedSetPanel({
         <CardTitle className="text-sm">Selected set</CardTitle>
         <div className="text-sm text-muted-foreground">
           {selectedSet
-            ? `${selectedSet.entry.exercise.name} · Set ${selectedSet.set.set_index + 1}`
+            ? `${selectedSet.entry.exercise.name} · Set ${selectedSet.set.set_index}`
             : "Select a set to edit."}
         </div>
       </CardHeader>

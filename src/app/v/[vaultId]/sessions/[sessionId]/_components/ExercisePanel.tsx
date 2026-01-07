@@ -86,7 +86,7 @@ export function ExercisesPanel({
                         isSelected ? "ring-2 ring-ring" : "",
                       ].join(" ")}
                       aria-pressed={isSelected}
-                      title={`Set ${s.set_index + 1}`}
+                      title={`Set ${s.set_index}`}
                     >
                       {top && <div className="text-sm font-semibold">{top}</div>}
                       {sub && (

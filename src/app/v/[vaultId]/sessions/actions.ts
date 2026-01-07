@@ -226,7 +226,7 @@ export async function quickLogSet(vaultId: string, formData: FormData) {
 
   if (lastErr) throw new Error(lastErr.message);
 
-  const nextIndex = (lastSet?.set_index ?? -1) + 1;
+  const nextIndex = (lastSet?.set_index ?? -1);
 
   const { data: inserted, error: insErr } = await supabase
     .from("sets")
