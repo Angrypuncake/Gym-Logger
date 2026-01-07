@@ -447,3 +447,78 @@ async function assertSessionAllowsStructuralEdit(vaultId: string, sessionId: str
   const finishedAt = await getSessionFinishedAt(vaultId, sessionId);
   if (finishedAt) throw new Error("Workout is completed. Structural edits are disabled.");
 }
+
+
+async function getSessionTimes(supabase: any, vaultId: string, sessionId: string) {
+  const { data, error } = await supabase
+    .from("workout_sessions")
+    .select("started_at,finished_at")
+    .eq("vault_id", vaultId)
+    .eq("id", sessionId)
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data as { started_at: string | null; finished_at: string | null };
+}
+
+async function updateSessionTimes(
+  supabase: any,
+  vaultId: string,
+  sessionId: string,
+  patch: { started_at?: string | null; finished_at?: string | null }
+) {
+  const { error } = await supabase
+    .from("workout_sessions")
+    .update(patch)
+    .eq("vault_id", vaultId)
+    .eq("id", sessionId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/v/${vaultId}/sessions`);
+  revalidatePath(`/v/${vaultId}/sessions/${sessionId}`);
+}
+
+export async function setStartNow(vaultId: string, sessionId: string) {
+  const supabase = await createClient();
+  const t = await getSessionTimes(supabase, vaultId, sessionId);
+
+  const nowIso = new Date().toISOString();
+  const patch: { started_at: string; finished_at?: string } = { started_at: nowIso };
+
+  // preserve CHECK (finished_at >= started_at)
+  if (t.finished_at) {
+    const fin = new Date(t.finished_at).getTime();
+    const now = new Date(nowIso).getTime();
+    if (fin < now) patch.finished_at = nowIso;
+  }
+
+  await updateSessionTimes(supabase, vaultId, sessionId, patch);
+}
+
+export async function clearStartTime(vaultId: string, sessionId: string) {
+  const supabase = await createClient();
+  await updateSessionTimes(supabase, vaultId, sessionId, { started_at: null });
+}
+
+export async function setFinishNow(vaultId: string, sessionId: string) {
+  const supabase = await createClient();
+  const t = await getSessionTimes(supabase, vaultId, sessionId);
+
+  const nowIso = new Date().toISOString();
+  const patch: { finished_at: string; started_at?: string } = { finished_at: nowIso };
+
+  // preserve CHECK (finished_at >= started_at)
+  if (t.started_at) {
+    const start = new Date(t.started_at).getTime();
+    const now = new Date(nowIso).getTime();
+    if (start > now) patch.started_at = nowIso;
+  }
+
+  await updateSessionTimes(supabase, vaultId, sessionId, patch);
+}
+
+export async function clearFinishTime(vaultId: string, sessionId: string) {
+  const supabase = await createClient();
+  await updateSessionTimes(supabase, vaultId, sessionId, { finished_at: null });
+}

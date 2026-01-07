@@ -3,11 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 import {
   addExerciseToSession,
   saveSet,
-  finishWorkout,
   discardWorkout,
   updateBodyweight,
   addSetToEntry,
   deleteUnloggedSet,
+  setStartNow,
+  setFinishNow,
+  clearStartTime,
+  clearFinishTime,
 } from "./actions";
 
 import { Button } from "@/components/ui/button";
@@ -38,10 +41,11 @@ export default async function SessionPage({
     .from("workout_sessions")
     .select(`
       id,
-      date,
+      created_at,
       session_date,
       notes,
       body_weight_kg,
+      started_at,
       finished_at,
       template:templates!workout_sessions_template_fk(name)
     `)
@@ -51,8 +55,6 @@ export default async function SessionPage({
 
   if (sErr) return <pre>{sErr.message}</pre>;
   if (!session) return <pre>Session not found</pre>;
-
-  const isActive = session.finished_at === null;
 
   const templateName =
     (session.template as unknown as { name: string } | null)?.name ?? "Workout";
@@ -94,14 +96,21 @@ export default async function SessionPage({
   }));
 
   const planned = sets.length;
-  const completed = sets.filter((x) => x.reps !== null || x.duration_sec !== null || x.weight_kg !== null).length;
+  const completed = sets.filter(
+    (x) => x.reps !== null || x.duration_sec !== null || x.weight_kg !== null
+  ).length;
   const pct = planned ? Math.round((completed / planned) * 100) : 0;
 
-  const { data: allExercises } = await supabase
+  const { data: allExercises, error: exErr } = await supabase
     .from("exercises")
     .select("id,name,modality")
     .eq("vault_id", vaultId)
     .order("name", { ascending: true });
+
+  if (exErr) return <pre>{exErr.message}</pre>;
+
+  const startSet = session.started_at !== null;
+  const endSet = session.finished_at !== null;
 
   return (
     <div className="mx-auto max-w-[980px] px-4 py-6 space-y-4">
@@ -109,42 +118,71 @@ export default async function SessionPage({
         <div className="space-y-2 w-full">
           <div className="flex items-center gap-2">
             <Button asChild variant="secondary" size="sm">
-              <Link href={`/v/${vaultId}`}>← Home</Link>
+              <Link href={`/v/${vaultId}/sessions`}>← Calendar</Link>
             </Button>
 
             <h1 className="text-sm font-semibold">
-              {isActive ? "Current workout:" : "Workout:"}{" "}
-              <span className="font-semibold">{templateName}</span>
+              Workout: <span className="font-semibold">{templateName}</span>
             </h1>
 
-            <Badge variant="outline">{completed}/{planned}</Badge>
-            {!isActive && <Badge variant="secondary">Completed</Badge>}
+            <Badge variant="outline">
+              {completed}/{planned}
+            </Badge>
+            <Badge variant="secondary">{pct}%</Badge>
+
+            <Badge variant="outline">{startSet ? "Start set" : "No start"}</Badge>
+            <Badge variant="outline">{endSet ? "End set" : "No end"}</Badge>
           </div>
 
           <div className="text-xs text-muted-foreground">
-            Session {session.session_date ?? new Date(session.date).toLocaleDateString()}
+            Session {session.session_date}
+            {session.created_at ? ` · Created ${new Date(session.created_at).toLocaleString()}` : null}
           </div>
 
           <Progress value={pct} />
         </div>
 
-        {isActive && (
-          <div className="flex items-center gap-2 shrink-0">
-            <form action={finishWorkout.bind(null, vaultId, sessionId)}>
-              <Button type="submit" size="sm">Finish</Button>
-            </form>
+        <div className="flex flex-col gap-2 shrink-0">
+          <div className="flex items-center gap-2 justify-end">
+            {!startSet ? (
+              <form action={setStartNow.bind(null, vaultId, sessionId)}>
+                <Button type="submit" size="sm" variant="secondary">
+                  Set start = now
+                </Button>
+              </form>
+            ) : (
+              <form action={clearStartTime.bind(null, vaultId, sessionId)}>
+                <Button type="submit" size="sm" variant="secondary">
+                  Clear start
+                </Button>
+              </form>
+            )}
 
-            <form action={discardWorkout.bind(null, vaultId, sessionId)}>
-              <ConfirmSubmitButton
-                variant="destructive"
-                size="sm"
-                confirmText="Discard this workout? This deletes the session and all sets."
-              >
-                Discard
-              </ConfirmSubmitButton>
-            </form>
+            {!endSet ? (
+              <form action={setFinishNow.bind(null, vaultId, sessionId)}>
+                <Button type="submit" size="sm">
+                  Set end = now
+                </Button>
+              </form>
+            ) : (
+              <form action={clearFinishTime.bind(null, vaultId, sessionId)}>
+                <Button type="submit" size="sm" variant="secondary">
+                  Clear end
+                </Button>
+              </form>
+            )}
           </div>
-        )}
+
+          <form action={discardWorkout.bind(null, vaultId, sessionId)} className="flex justify-end">
+            <ConfirmSubmitButton
+              variant="destructive"
+              size="sm"
+              confirmText="Discard this session? This deletes the session and all entries/sets."
+            >
+              Discard
+            </ConfirmSubmitButton>
+          </form>
+        </div>
       </header>
 
       <SessionLogger
@@ -152,19 +190,12 @@ export default async function SessionPage({
         entries={entriesWithSets as any}
         allExercises={(allExercises ?? []) as any}
         bodyWeightKg={session.body_weight_kg as number | null}
-        updateBodyweightAction={updateBodyweight.bind(null, vaultId, sessionId)} // allowed always
-        saveSetAction={saveSet.bind(null, vaultId, sessionId)}                 // allowed always
-
-        // Structural actions: only provided when active
-        addExerciseAction={
-          isActive ? addExerciseToSession.bind(null, vaultId, sessionId) : undefined
-        }
-        addSetAction={isActive ? addSetToEntry.bind(null, vaultId, sessionId) : undefined}
-        deleteUnloggedSetAction={
-          isActive ? deleteUnloggedSet.bind(null, vaultId, sessionId) : undefined
-        }
+        updateBodyweightAction={updateBodyweight.bind(null, vaultId, sessionId)}
+        saveSetAction={saveSet.bind(null, vaultId, sessionId)}
+        addExerciseAction={addExerciseToSession.bind(null, vaultId, sessionId)}
+        addSetAction={addSetToEntry.bind(null, vaultId, sessionId)}
+        deleteUnloggedSetAction={deleteUnloggedSet.bind(null, vaultId, sessionId)}
       />
-
     </div>
   );
 }

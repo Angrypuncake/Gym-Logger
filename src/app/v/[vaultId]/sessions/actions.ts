@@ -1,9 +1,34 @@
+// src/app/v/[vaultId]/sessions/actions.ts
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { createSessionFromTemplate } from "./createSessionFromTemplate";
+
+function asString(v: FormDataEntryValue | null) {
+  if (v === null) return "";
+  return String(v).trim();
+}
 
 type PrType = "REPS_MAX_WEIGHT" | "REPS_MAX_REPS" | "ISO_MAX_DURATION";
+
+function parseNumberOrNull(v: FormDataEntryValue | null): number | null {
+  if (v === null) return null;
+  const s = String(v).trim();
+  if (s === "") return null;
+  const n = Number(s);
+  if (!Number.isFinite(n)) throw new Error(`Invalid number: ${s}`);
+  return n;
+}
+
+function parseIntOrNull(v: FormDataEntryValue | null): number | null {
+  const n = parseNumberOrNull(v);
+  if (n === null) return null;
+  const i = Math.trunc(n);
+  if (!Number.isFinite(i)) throw new Error("Invalid integer");
+  return i;
+}
 
 async function ensureQuickLogTemplate(supabase: any, vaultId: string) {
   const { data: existing, error } = await supabase
@@ -62,6 +87,8 @@ async function maybeRecordPr(params: {
     const isBetter = prev === null || c.value > prev;
     if (!isBetter) continue;
 
+    const nowIso = new Date().toISOString();
+
     const { error: upsertErr } = await supabase
       .from("exercise_prs")
       .upsert(
@@ -70,7 +97,7 @@ async function maybeRecordPr(params: {
           exercise_id: exerciseId,
           pr_type: c.pr_type,
           value: c.value,
-          achieved_at: new Date().toISOString(),
+          achieved_at: nowIso,
           session_id: sessionId,
           set_id: setId,
         },
@@ -84,7 +111,7 @@ async function maybeRecordPr(params: {
       exercise_id: exerciseId,
       pr_type: c.pr_type,
       value: c.value,
-      achieved_at: new Date().toISOString(),
+      achieved_at: nowIso,
       session_id: sessionId,
       set_id: setId,
     });
@@ -97,27 +124,30 @@ export async function quickLogSet(vaultId: string, formData: FormData) {
   const day = String(formData.get("day") || "").trim(); // YYYY-MM-DD
   const exerciseId = String(formData.get("exercise_id") || "").trim();
 
-  const repsRaw = formData.get("reps");
-  const weightRaw = formData.get("weight_kg");
-  const durRaw = formData.get("duration_sec");
-
-  const reps = repsRaw === null || repsRaw === "" ? null : Number(repsRaw);
-  const weightKg = weightRaw === null || weightRaw === "" ? null : Number(weightRaw);
-  const durationSec = durRaw === null || durRaw === "" ? null : Number(durRaw);
-
   if (!day) throw new Error("day required");
   if (!exerciseId) throw new Error("exercise_id required");
 
+  const reps = parseIntOrNull(formData.get("reps"));
+  const weightKg = parseNumberOrNull(formData.get("weight_kg"));
+  const durationSec = parseIntOrNull(formData.get("duration_sec"));
+
+  const hasAny = reps !== null || weightKg !== null || durationSec !== null;
+  if (!hasAny) throw new Error("Enter reps, weight, or duration");
+
   const supabase = await createClient();
 
-  // Find existing in-progress session on that day
+  // Ensure Quick Log template exists and get its id
+  const quickTplId = await ensureQuickLogTemplate(supabase, vaultId);
+
+  // Find latest Quick Log session on that day (NOT based on finished_at)
   const { data: existingSession, error: sFindErr } = await supabase
     .from("workout_sessions")
     .select("id")
     .eq("vault_id", vaultId)
     .eq("session_date", day)
-    .is("finished_at", null)
-    .order("date", { ascending: false })
+    .eq("template_id", quickTplId)
+    .order("started_at", { ascending: false })
+    .order("created_at", { ascending: false }) // renamed from "date"
     .limit(1)
     .maybeSingle();
 
@@ -125,17 +155,16 @@ export async function quickLogSet(vaultId: string, formData: FormData) {
 
   let sessionId = existingSession?.id as string | undefined;
 
+  // If none, create a new Quick Log session for that day
   if (!sessionId) {
-    const quickTplId = await ensureQuickLogTemplate(supabase, vaultId);
-
     const { data: created, error: sCreateErr } = await supabase
       .from("workout_sessions")
       .insert({
         vault_id: vaultId,
         template_id: quickTplId,
         planned_template_id: quickTplId,
-        date: new Date().toISOString(),
         session_date: day,
+        started_at: null,
         finished_at: null,
       })
       .select("id")
@@ -145,21 +174,24 @@ export async function quickLogSet(vaultId: string, formData: FormData) {
     sessionId = created.id as string;
   }
 
-  // Reuse or create entry for that exercise
+  // Reuse latest entry for that exercise in this session (avoid maybeSingle multi-row error)
   const { data: existingEntry, error: eFindErr } = await supabase
     .from("workout_entries")
     .select("id,order")
     .eq("vault_id", vaultId)
     .eq("session_id", sessionId)
     .eq("exercise_id", exerciseId)
+    .order("order", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   if (eFindErr) throw new Error(eFindErr.message);
 
   let entryId = existingEntry?.id as string | undefined;
 
+  // If no entry yet, create one at the end
   if (!entryId) {
-    const { data: lastEntry } = await supabase
+    const { data: lastEntry, error: lastEntryErr } = await supabase
       .from("workout_entries")
       .select("order")
       .eq("vault_id", vaultId)
@@ -168,7 +200,9 @@ export async function quickLogSet(vaultId: string, formData: FormData) {
       .limit(1)
       .maybeSingle();
 
-    const nextOrder = (lastEntry?.order ?? 0) + 1;
+    if (lastEntryErr) throw new Error(lastEntryErr.message);
+
+    const nextOrder = (lastEntry?.order ?? -1) + 1; // 0-based
 
     const { data: createdEntry, error: eCreateErr } = await supabase
       .from("workout_entries")
@@ -180,7 +214,7 @@ export async function quickLogSet(vaultId: string, formData: FormData) {
     entryId = createdEntry.id as string;
   }
 
-  // Next set_index
+  // Next set_index (0-based)
   const { data: lastSet, error: lastErr } = await supabase
     .from("sets")
     .select("set_index")
@@ -192,7 +226,7 @@ export async function quickLogSet(vaultId: string, formData: FormData) {
 
   if (lastErr) throw new Error(lastErr.message);
 
-  const nextIndex = (lastSet?.set_index ?? 0) + 1;
+  const nextIndex = (lastSet?.set_index ?? -1) + 1;
 
   const { data: inserted, error: insErr } = await supabase
     .from("sets")
@@ -233,5 +267,38 @@ export async function quickLogSet(vaultId: string, formData: FormData) {
 
   revalidatePath(`/v/${vaultId}/sessions`);
   revalidatePath(`/v/${vaultId}/sessions/${sessionId}`);
-  revalidatePath(`/v/${vaultId}`);
+}
+
+/**
+ * Creates a session for a given day + template and redirects to the session logger.
+ * Times are optional and editable later.
+ */
+export async function createSessionAction(vaultId: string, formData: FormData) {
+  const templateId = asString(formData.get("template_id"));
+  const sessionDate = asString(formData.get("session_date")); // YYYY-MM-DD
+
+  // Optional: allow passing explicit timekeeping fields (ISO strings) from UI later
+  const startedAtRaw = asString(formData.get("started_at"));
+  const finishedAtRaw = asString(formData.get("finished_at"));
+
+  const startedAt = startedAtRaw ? startedAtRaw : null;
+  const finishedAt = finishedAtRaw ? finishedAtRaw : null;
+
+  if (!templateId) throw new Error("template_id required");
+  if (!sessionDate) throw new Error("session_date required");
+
+  const { sessionId } = await createSessionFromTemplate({
+    vaultId,
+    templateId,
+    sessionDate,
+    startedAt,
+    finishedAt,
+    // Optional: choose your default when template_items.target_sets is null
+    defaultTargetSets: 0,
+  });
+
+  revalidatePath(`/v/${vaultId}/sessions`);
+  revalidatePath(`/v/${vaultId}/sessions/${sessionId}`);
+
+  redirect(`/v/${vaultId}/sessions/${sessionId}`);
 }

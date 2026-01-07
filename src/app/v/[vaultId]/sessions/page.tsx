@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import CalendarClient from "./CalendarClient";
-import { quickLogSet } from "./actions";
 
 type SummaryRow = {
   session_id: string;
@@ -9,14 +8,16 @@ type SummaryRow = {
   template_id: string;
   template_name: string;
   session_date: string; // YYYY-MM-DD
-  started_at: string;
-  finished_at: string | null;
+  started_at: string | null;
+  finished_at: string | null; // timekeeping only
   planned_sets: number;
   logged_sets: number;
   total_reps: number;
   total_iso_sec: number;
   modalities: string[];
   has_pr: boolean;
+  // If your view exposes created_at, include it:
+  // created_at: string;
 };
 
 function sydneyKey(d: Date) {
@@ -58,7 +59,10 @@ export default async function SessionsCalendarPage({
     .gte("session_date", monthStartKey(y, m))
     .lte("session_date", monthEndKey(y, m))
     .order("session_date", { ascending: true })
+    // started_at can be null; keep it secondary
     .order("started_at", { ascending: true });
+    // If your view has created_at, prefer:
+    // .order("created_at", { ascending: true });
 
   if (error) return <pre>{error.message}</pre>;
   const summaries = (summariesRaw ?? []) as SummaryRow[];
@@ -69,15 +73,13 @@ export default async function SessionsCalendarPage({
     .eq("vault_id", vaultId)
     .order("order", { ascending: true });
 
+  
+
   if (tErr) return <pre>{tErr.message}</pre>;
 
-  const { data: exercises, error: exErr } = await supabase
-    .from("exercises")
-    .select("id,name,modality")
-    .eq("vault_id", vaultId)
-    .order("name", { ascending: true });
+  console.log("vaultid", vaultId)
 
-  if (exErr) return <pre>{exErr.message}</pre>;
+  console.log("templates", templates)
 
   // Adherence: streak + this-week count (Sydney)
   const since = new Date(now);
@@ -85,14 +87,14 @@ export default async function SessionsCalendarPage({
 
   const { data: adherenceRaw } = await supabase
     .from("session_summaries" as any)
-    .select("session_date,finished_at,logged_sets")
+    .select("session_date,logged_sets") // finished_at no longer used for adherence
     .eq("vault_id", vaultId)
     .gte("session_date", sydneyKey(since))
     .lte("session_date", sydneyKey(now));
 
   const trainedDays = new Set(
     (adherenceRaw ?? [])
-      .filter((r: any) => r.finished_at !== null && Number(r.logged_sets ?? 0) > 0)
+      .filter((r: any) => Number(r.logged_sets ?? 0) > 0)
       .map((r: any) => r.session_date)
   );
 
