@@ -39,7 +39,6 @@ export async function ExerciseEditorPanel({
 
   const muscleGroups = await listAnatomicalTargets({ kind: "MUSCLE_GROUP" });
 
-  // FIX: include exercise.id
   const existing = await listExerciseTargets(exercise.id);
   console.log(existing)
 
@@ -47,26 +46,54 @@ export async function ExerciseEditorPanel({
 
   return (
     <Card>
-      <CardHeader className="pb-3 space-y-2">
-        <div className="flex items-center justify-between gap-3">
-          <CardTitle className="text-sm">Edit exercise</CardTitle>
-          <Button asChild variant="ghost" size="sm">
-            <Link href={clearHref}>Close</Link>
-          </Button>
-        </div>
 
-        <div className="flex items-center gap-2">
-          <div className="text-sm font-semibold">{exercise.name}</div>
-          <Badge variant="outline">{exercise.modality}</Badge>
-          {exercise.uses_bodyweight ? <Badge variant="secondary">Bodyweight</Badge> : null}
-        </div>
-      </CardHeader>
+<CardContent className="pt-0 space-y-4">
+  {/* Exercise details */}
+  <form action={updateExerciseAction.bind(null, vaultId, exercise.id)} className="space-y-4">
+    <div className="space-y-2">
+      <label className="text-sm font-medium">Name</label>
+      <input
+        name="name"
+        defaultValue={exercise.name}
+        required
+        className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      />
+    </div>
 
+    {/* Optional: keep if you want modality editable here; otherwise remove */}
+    <div className="space-y-2">
+      <label className="text-sm font-medium">Modality</label>
+      <select
+        name="modality"
+        defaultValue={exercise.modality}
+        className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <option value="REPS">REPS</option>
+        <option value="ISOMETRIC">ISOMETRIC</option>
+      </select>
+    </div>
+
+    <div className="flex items-center gap-2">
+      <input
+        id="uses_bodyweight"
+        type="checkbox"
+        name="uses_bodyweight"
+        defaultChecked={exercise.uses_bodyweight}
+      />
+      <label htmlFor="uses_bodyweight" className="text-sm">
+        Uses bodyweight
+      </label>
+    </div>
+
+    <Button type="submit" size="sm" className="active:scale-95 transition-transform">
+      Save details
+    </Button>
+  </form>
+
+  <Separator />
+
+</CardContent>
       <CardContent className="pt-0 space-y-4">
-        <form action={updateExerciseAction.bind(null, vaultId, exercise.id)} className="space-y-4">
-          {/* unchanged */}
-          ...
-        </form>
 
         <Separator />
 

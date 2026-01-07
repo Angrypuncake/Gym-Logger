@@ -160,3 +160,32 @@ export async function listExerciseTargets(exerciseId: string): Promise<ExerciseT
   
     if (delErr) throw new Error(delErr.message);
   }
+
+  export async function listPrimaryMuscleGroupsForExercises(
+    vaultId: string,
+    exerciseIds: string[]
+  ): Promise<Map<string, string>> {
+    const supabase = await createClient();
+  
+    if (exerciseIds.length === 0) return new Map();
+  
+    const { data, error } = await supabase
+      .from("exercise_targets")
+      .select("exercise_id, anatomical_targets(name)")
+      .eq("vault_id", vaultId)
+      .eq("role", "PRIMARY")
+      .in("exercise_id", exerciseIds);
+  
+    if (error) throw new Error(error.message);
+  
+    const out = new Map<string, string>();
+    for (const row of (data ?? []) as any[]) {
+      const name = row.anatomical_targets?.name as string | undefined;
+      if (!name) continue;
+  
+      // if you ever accidentally have >1 PRIMARY per exercise, first one wins
+      if (!out.has(row.exercise_id)) out.set(row.exercise_id, name);
+    }
+  
+    return out;
+  }

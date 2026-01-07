@@ -1,6 +1,12 @@
 "use server";
 
-import { createExercise, deleteExercise, updateExercise } from "@/db/exercises";
+import {
+  createExercise,
+  updateExercise,
+  archiveExercise,
+  unarchiveExercise,
+  deleteExerciseHard,
+} from "@/db/exercises";
 import type { Enums } from "@/types/supabase";
 import { revalidatePath } from "next/cache";
 import { listAnatomicalTargets, listExerciseTargets, setExerciseTargets } from "@/db/anatomy";
@@ -8,17 +14,28 @@ import { listAnatomicalTargets, listExerciseTargets, setExerciseTargets } from "
 export async function addExercise(vaultId: string, formData: FormData) {
   const name = String(formData.get("name") || "").trim();
   const modality = String(formData.get("modality") || "REPS") as Enums<"modality">;
-
   if (!name) return;
 
   await createExercise(vaultId, { name, modality });
-
   revalidatePath(`/v/${vaultId}/exercises`);
 }
 
-export async function removeExercise(vaultId: string, id: string) {
-  await deleteExercise(vaultId, id);
+export async function archiveExerciseAction(vaultId: string, id: string) {
+  await archiveExercise(vaultId, id);
+  revalidatePath(`/v/${vaultId}/exercises`);
+}
 
+export async function unarchiveExerciseAction(vaultId: string, id: string) {
+  await unarchiveExercise(vaultId, id);
+  revalidatePath(`/v/${vaultId}/exercises`);
+}
+
+/**
+ * Hard delete. Should be used rarely; deleteExerciseHard enforces "unused only".
+ * If referenced anywhere, it throws an error.
+ */
+export async function removeExercise(vaultId: string, id: string) {
+  await deleteExerciseHard(vaultId, id);
   revalidatePath(`/v/${vaultId}/exercises`);
 }
 
@@ -35,19 +52,14 @@ export async function updateExerciseAction(
 
   await updateExercise(vaultId, exerciseId, { name, modality, uses_bodyweight });
 
-  // Always revalidate the manager page
   revalidatePath(`/v/${vaultId}/exercises`);
-
-  // Optional: if Next ends up caching by searchParams separately in your setup,
-  // you can also revalidate the "selected" variant:
   revalidatePath(`/v/${vaultId}/exercises?edit=${exerciseId}`);
 }
 
 type AnatomicalTargetRole = Enums<"anatomical_target_role">;
 
-
 export async function updateExerciseTargetsAction(
-  vaultId: string, // keep for revalidatePath only
+  vaultId: string,
   exerciseId: string,
   formData: FormData
 ) {
@@ -69,8 +81,8 @@ export async function updateExerciseTargetsAction(
 
   await setExerciseTargets(vaultId, exerciseId, picks);
 
-  // still revalidate vault page
-  // revalidatePath(`/v/${vaultId}/exercises`);
+  revalidatePath(`/v/${vaultId}/exercises`);
+  revalidatePath(`/v/${vaultId}/exercises?edit=${exerciseId}`);
 }
 
 export async function fetchMuscleGroups() {

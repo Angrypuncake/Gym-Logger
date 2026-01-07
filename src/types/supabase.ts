@@ -47,6 +47,7 @@ export type Database = {
           name: string
           parent_id: string | null
           slug: string
+          vault_id: string
         }
         Insert: {
           created_at?: string
@@ -55,6 +56,7 @@ export type Database = {
           name: string
           parent_id?: string | null
           slug: string
+          vault_id: string
         }
         Update: {
           created_at?: string
@@ -63,6 +65,7 @@ export type Database = {
           name?: string
           parent_id?: string | null
           slug?: string
+          vault_id?: string
         }
         Relationships: [
           {
@@ -70,6 +73,13 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "anatomical_targets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anatomical_targets_vault_fk"
+            columns: ["vault_id"]
+            isOneToOne: false
+            referencedRelation: "vaults"
             referencedColumns: ["id"]
           },
         ]
@@ -191,6 +201,7 @@ export type Database = {
       }
       exercises: {
         Row: {
+          archived_at: string | null
           id: string
           modality: Database["public"]["Enums"]["modality"]
           name: string
@@ -198,6 +209,7 @@ export type Database = {
           vault_id: string
         }
         Insert: {
+          archived_at?: string | null
           id?: string
           modality: Database["public"]["Enums"]["modality"]
           name: string
@@ -205,6 +217,7 @@ export type Database = {
           vault_id: string
         }
         Update: {
+          archived_at?: string | null
           id?: string
           modality?: Database["public"]["Enums"]["modality"]
           name?: string
