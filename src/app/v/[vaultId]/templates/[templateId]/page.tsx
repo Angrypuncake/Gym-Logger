@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import SetBlocksControl from "./SetBlocksControl";
+import { ExercisePicker } from "../../exercises/ExercisePicker";
 
 type ItemRow = {
   id: string;
@@ -196,50 +197,44 @@ export default async function TemplateEditorPage({
         </Card>
 
         <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm">Add existing exercise</CardTitle>
-              <div className="text-sm text-muted-foreground">
-                Add an unused exercise from your vault to this template.
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0 space-y-2">
-              <form
-                action={addExistingExercise.bind(null, vaultId, templateId)}
-                className="flex flex-col gap-2 sm:flex-row sm:items-center"
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Add existing exercise</CardTitle>
+            <div className="text-sm text-muted-foreground">
+              Add an unused exercise from your vault to this template.
+            </div>
+          </CardHeader>
+
+          <CardContent className="pt-0 space-y-3">
+            <form
+              action={addExistingExercise.bind(null, vaultId, templateId)}
+              className="space-y-3"
+            >
+              <ExercisePicker
+                exercises={availableExercises}
+                disabled={availableExercises.length === 0}
+                emptyText="No matches. Try a different search."
+                listHeightClassName="h-56"
+              />
+
+              <Button
+                type="submit"
+                size="sm"
+                disabled={availableExercises.length === 0}
+                className="active:scale-95 transition-transform"
               >
-                <select
-                  name="exercise_id"
-                  defaultValue=""
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <option value="" disabled>
-                    Select…
-                  </option>
-                  {availableExercises.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.name} ({e.modality})
-                    </option>
-                  ))}
-                </select>
+                Add
+              </Button>
+            </form>
 
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={availableExercises.length === 0}
-                  className="active:scale-95 transition-transform"
-                >
-                  Add
-                </Button>
-              </form>
-
-              {availableExercises.length === 0 && (
-                <div className="text-sm text-muted-foreground">
-                  No unused exercises available. Create a new one below.
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            {availableExercises.length === 0 && (
+              <div className="text-sm text-muted-foreground">
+                No unused exercises available. Create a new one below.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+                  
 
           <Card>
             <CardHeader className="pb-3">
