@@ -86,25 +86,68 @@ async function maybeRecordPr(params: {
     if (evtErr) throw new Error(evtErr.message);
   }
 }
-
 export async function saveSet(vaultId: string, sessionId: string, formData: FormData) {
-  const setId = String(formData.get("set_id") || "");
+  const setId = String(formData.get("set_id") || "").trim();
+  if (!setId) return;
+
+  // Parse + validate inputs (reject NaN, negatives, and absurd values)
   const repsRaw = formData.get("reps");
   const weightRaw = formData.get("weight_kg");
   const durRaw = formData.get("duration_sec");
 
-  const reps = repsRaw === null || repsRaw === "" ? null : Number(repsRaw);
-  const weightKg = weightRaw === null || weightRaw === "" ? null : Number(weightRaw);
-  const durationSec = durRaw === null || durRaw === "" ? null : Number(durRaw);
+  function parseNullableInt(v: FormDataEntryValue | null, max: number) {
+    if (v === null || v === "") return null;
+    const n = Number(v);
+    if (!Number.isFinite(n) || !Number.isInteger(n)) throw new Error("Invalid number");
+    if (n < 0) throw new Error("Negative not allowed");
+    if (n > max) throw new Error("Value too large");
+    return n;
+  }
 
-  if (!setId) return;
+  function parseNullableNumber(v: FormDataEntryValue | null, max: number) {
+    if (v === null || v === "") return null;
+    const n = Number(v);
+    if (!Number.isFinite(n)) throw new Error("Invalid number");
+    if (n < 0) throw new Error("Negative not allowed");
+    if (n > max) throw new Error("Value too large");
+    return n;
+  }
+
+  const reps = parseNullableInt(repsRaw, 1000); // generous upper bound
+  const durationSec = parseNullableInt(durRaw, 60 * 60 * 4); // 4h
+  const weightKg = parseNullableNumber(weightRaw, 2000); // generous upper bound
+
+  // At least one field must be present (otherwise meaningless write)
+  if (reps === null && durationSec === null && weightKg === null) {
+    // choose either: return silently or clear the set. Here: return.
+    return;
+  }
+
+  // Basic modality-shape guard (avoid reps+duration combos unless you explicitly support it)
+  // If you want to allow both, delete this block.
+  if (reps !== null && durationSec !== null) {
+    throw new Error("Set cannot have both reps and duration.");
+  }
 
   const supabase = await createClient();
 
-  // Ensure set belongs to this vault + session; also get entry/exercise
+  // Verify set belongs to (vaultId, sessionId) and fetch exercise modality in one go.
+  // This prevents editing arbitrary sets by guessing IDs.
   const { data: owner, error: ownerErr } = await supabase
     .from("sets")
-    .select("id, entry_id, workout_entries!inner(session_id, exercise_id)")
+    .select(
+      `
+      id,
+      entry_id,
+      workout_entries!inner(
+        session_id,
+        exercise_id,
+        exercises!inner(
+          modality
+        )
+      )
+    `
+    )
     .eq("id", setId)
     .eq("vault_id", vaultId)
     .eq("workout_entries.session_id", sessionId)
@@ -113,46 +156,57 @@ export async function saveSet(vaultId: string, sessionId: string, formData: Form
   if (ownerErr) throw new Error(ownerErr.message);
   if (!owner) throw new Error("Set not found for this session.");
 
-  const exerciseId = (owner as any).workout_entries?.exercise_id as string;
+  const exerciseId = (owner as any).workout_entries?.exercise_id as string | undefined;
+  const modality = (owner as any).workout_entries?.exercises?.modality as string | undefined;
 
-  const { error } = await supabase
+  if (!exerciseId || !modality) throw new Error("Set is missing exercise linkage.");
+
+  // Enforce modality-specific fields (prevents writing duration for REPS etc.)
+  if (modality === "REPS") {
+    if (durationSec !== null) throw new Error("Duration not allowed for REPS modality.");
+    // reps can be null if you are clearing; you currently don't clear. enforce reps present:
+    // if (reps === null) throw new Error("Reps required for REPS modality.");
+  } else if (modality === "ISOMETRIC") {
+    if (reps !== null) throw new Error("Reps not allowed for ISOMETRIC modality.");
+    // if (durationSec === null) throw new Error("Duration required for ISOMETRIC modality.");
+  }
+
+  // Update only allowed columns; keep scope restricted to this vault+id
+  const patch: { reps: number | null; weight_kg: number | null; duration_sec: number | null } = {
+    reps,
+    weight_kg: weightKg,
+    duration_sec: durationSec,
+  };
+
+  const { error: upErr } = await supabase
     .from("sets")
-    .update({ reps, weight_kg: weightKg, duration_sec: durationSec })
+    .update(patch)
     .eq("id", setId)
     .eq("vault_id", vaultId);
 
-  if (error) throw new Error(error.message);
+  if (upErr) throw new Error(upErr.message);
 
-  // PR detection
-  if (exerciseId) {
-    const { data: ex, error: exErr } = await supabase
-      .from("exercises")
-      .select("modality")
-      .eq("vault_id", vaultId)
-      .eq("id", exerciseId)
-      .single();
-
-    if (exErr) throw new Error(exErr.message);
-
-    await maybeRecordPr({
-      supabase,
-      vaultId,
-      sessionId,
-      setId,
-      exerciseId,
-      modality: ex.modality as any,
-      reps,
-      weightKg,
-      durationSec,
-    });
-  }
+  // PR detection (use modality already fetched; avoid extra query)
+  await maybeRecordPr({
+    supabase,
+    vaultId,
+    sessionId,
+    setId,
+    exerciseId,
+    modality: modality as any,
+    reps,
+    weightKg,
+    durationSec,
+  });
 
   revalidatePath(`/v/${vaultId}`);
   revalidatePath(`/v/${vaultId}/sessions`);
   revalidatePath(`/v/${vaultId}/sessions/${sessionId}`);
 }
 
+
 export async function addExerciseToSession(vaultId: string, sessionId: string, formData: FormData) {
+  await assertSessionAllowsStructuralEdit(vaultId, sessionId);
   const exerciseId = String(formData.get("exercise_id") || "").trim();
   if (!exerciseId) return;
 
@@ -210,6 +264,7 @@ export async function addExerciseToSession(vaultId: string, sessionId: string, f
 }
 
 export async function addSetToEntry(vaultId: string, sessionId: string, entryId: string) {
+  await assertSessionAllowsStructuralEdit(vaultId, sessionId);
   const supabase = await createClient();
 
   // Ensure entry belongs to this session
@@ -252,6 +307,7 @@ export async function addSetToEntry(vaultId: string, sessionId: string, entryId:
 }
 
 export async function deleteUnloggedSet(vaultId: string, sessionId: string, setId: string) {
+  await assertSessionAllowsStructuralEdit(vaultId, sessionId);
   const supabase = await createClient();
 
   const { data: s, error: readErr } = await supabase
@@ -327,6 +383,7 @@ export async function finishWorkout(vaultId: string, sessionId: string) {
 }
 
 export async function discardWorkout(vaultId: string, sessionId: string) {
+  await assertSessionAllowsStructuralEdit(vaultId, sessionId);
   const supabase = await createClient();
 
   // Only allow discarding an ACTIVE session (safety)
@@ -371,4 +428,22 @@ export async function discardWorkout(vaultId: string, sessionId: string) {
   revalidatePath(`/v/${vaultId}`);
   revalidatePath(`/v/${vaultId}/sessions`);
   redirect(`/v/${vaultId}`);
+}
+
+async function getSessionFinishedAt(vaultId: string, sessionId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("workout_sessions")
+    .select("finished_at")
+    .eq("vault_id", vaultId)
+    .eq("id", sessionId)
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data?.finished_at ?? null;
+}
+
+async function assertSessionAllowsStructuralEdit(vaultId: string, sessionId: string) {
+  const finishedAt = await getSessionFinishedAt(vaultId, sessionId);
+  if (finishedAt) throw new Error("Workout is completed. Structural edits are disabled.");
 }

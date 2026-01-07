@@ -137,8 +137,6 @@ export default async function SessionsCalendarPage({
         month0={m}
         summaries={summaries as any}
         templates={(templates ?? []) as any}
-        exercises={(exercises ?? []) as any}
-        quickLogAction={quickLogSet.bind(null, vaultId)}
       />
     </div>
   );

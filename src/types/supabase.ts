@@ -506,39 +506,42 @@ export type Database = {
       workout_sessions: {
         Row: {
           body_weight_kg: number | null
-          date: string
+          created_at: string
           finished_at: string | null
           id: string
           notes: string | null
           planned_template_id: string | null
           rpe: number | null
           session_date: string
+          started_at: string | null
           tags: string[] | null
           template_id: string
           vault_id: string
         }
         Insert: {
           body_weight_kg?: number | null
-          date?: string
+          created_at?: string
           finished_at?: string | null
           id?: string
           notes?: string | null
           planned_template_id?: string | null
           rpe?: number | null
           session_date: string
+          started_at?: string | null
           tags?: string[] | null
           template_id: string
           vault_id: string
         }
         Update: {
           body_weight_kg?: number | null
-          date?: string
+          created_at?: string
           finished_at?: string | null
           id?: string
           notes?: string | null
           planned_template_id?: string | null
           rpe?: number | null
           session_date?: string
+          started_at?: string | null
           tags?: string[] | null
           template_id?: string
           vault_id?: string

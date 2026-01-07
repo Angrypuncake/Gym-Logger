@@ -152,12 +152,19 @@ export default async function SessionPage({
         entries={entriesWithSets as any}
         allExercises={(allExercises ?? []) as any}
         bodyWeightKg={session.body_weight_kg as number | null}
-        updateBodyweightAction={updateBodyweight.bind(null, vaultId, sessionId)}
-        addExerciseAction={addExerciseToSession.bind(null, vaultId, sessionId)}
-        addSetAction={addSetToEntry.bind(null, vaultId, sessionId)}
-        deleteUnloggedSetAction={deleteUnloggedSet.bind(null, vaultId, sessionId)}
-        saveSetAction={saveSet.bind(null, vaultId, sessionId)}
+        updateBodyweightAction={updateBodyweight.bind(null, vaultId, sessionId)} // allowed always
+        saveSetAction={saveSet.bind(null, vaultId, sessionId)}                 // allowed always
+
+        // Structural actions: only provided when active
+        addExerciseAction={
+          isActive ? addExerciseToSession.bind(null, vaultId, sessionId) : undefined
+        }
+        addSetAction={isActive ? addSetToEntry.bind(null, vaultId, sessionId) : undefined}
+        deleteUnloggedSetAction={
+          isActive ? deleteUnloggedSet.bind(null, vaultId, sessionId) : undefined
+        }
       />
+
     </div>
   );
 }
