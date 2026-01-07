@@ -124,9 +124,6 @@ export default async function SessionsCalendarPage({
   return (
     <div className="mx-auto max-w-[980px] px-4 py-6 space-y-4">
       <div className="flex items-center justify-between">
-        <Link href={`/v/${vaultId}`} className="text-sm text-muted-foreground hover:underline">
-          ← Home
-        </Link>
         <div className="text-sm text-muted-foreground">
           Streak: <span className="font-medium text-foreground">{streak}</span> · This week:{" "}
           <span className="font-medium text-foreground">{weekCount}</span>
