@@ -45,14 +45,24 @@ export default async function VaultHome({
         See workout history
       </Link>
 
-      <div className="flex items-center justify-between">
-        <h1 className="text-sm font-semibold">Program days</h1>
-        <Link href={`/v/${vaultId}/templates/new`}>
-          <Button size="sm" variant="secondary">
-            Add new template
-          </Button>
-        </Link>
-      </div>
+      <div className="flex items-center justify-between gap-3">
+  <h1 className="text-sm font-semibold">Program days</h1>
+
+  <div className="flex items-center gap-2">
+    <Link href={`/v/${vaultId}/exercises`}>
+      <Button size="sm" variant="secondary">
+        Manage exercises
+      </Button>
+    </Link>
+
+    <Link href={`/v/${vaultId}/templates/new`}>
+      <Button size="sm" variant="secondary">
+        Add new template
+      </Button>
+    </Link>
+  </div>
+</div>
+
 
       {current && (
         <Card>

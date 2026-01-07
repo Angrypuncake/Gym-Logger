@@ -19,7 +19,8 @@ type ItemRow = {
   id: string;
   order: number;
   target_sets: number | null;
-  exercise: { id: string; name: string; modality: "REPS" | "ISOMETRIC" };
+  exercise_id: string;
+  exercise: { id: string; name: string; modality: "REPS" | "ISOMETRIC" } | null;
 };
 
 export default async function TemplateEditorPage({
@@ -41,7 +42,7 @@ export default async function TemplateEditorPage({
 
   const { data: items, error: iErr } = await supabase
     .from("template_items")
-    .select("id,order,target_sets, exercise:exercises(id,name,modality)")
+    .select("id,order,target_sets,exercise_id, exercise:exercises(id,name,modality)")
     .eq("vault_id", vaultId)
     .eq("template_id", templateId)
     .order("order", { ascending: true });
@@ -54,7 +55,9 @@ export default async function TemplateEditorPage({
     .eq("vault_id", vaultId)
     .order("name", { ascending: true });
 
-  const used = new Set((items ?? []).map((it) => (it.exercise as any)?.id).filter(Boolean));
+  const used = new Set(
+    ((items as unknown as ItemRow[]) ?? []).map((it) => it.exercise_id).filter(Boolean)
+  );
   const availableExercises = (exercises ?? []).filter((e) => !used.has(e.id));
 
   return (
@@ -62,7 +65,7 @@ export default async function TemplateEditorPage({
       <header className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Button asChild variant="secondary" size="sm">
+            <Button asChild type="button" variant="secondary" size="sm">
               <Link href={`/v/${vaultId}`}>← Back</Link>
             </Button>
             <h1 className="text-sm font-semibold">
@@ -72,7 +75,7 @@ export default async function TemplateEditorPage({
           <div className="text-xs text-muted-foreground">Vault: {vaultId}</div>
         </div>
 
-        <Button asChild variant="ghost" size="sm">
+        <Button asChild type="button" variant="ghost" size="sm">
           <Link href={`/v/${vaultId}`}>Done</Link>
         </Button>
       </header>
@@ -91,7 +94,7 @@ export default async function TemplateEditorPage({
               defaultValue={template.name}
               className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
-            <Button type="submit" size="sm">
+            <Button type="submit" size="sm" className="active:scale-95 transition-transform">
               Rename
             </Button>
           </form>
@@ -109,57 +112,81 @@ export default async function TemplateEditorPage({
 
           <CardContent className="pt-0">
             <div className="space-y-3">
-              {(items as unknown as ItemRow[]).map((it, idx) => (
-                <div key={it.id} className="rounded-lg border border-border p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="text-sm font-medium">
-                          {idx + 1}. {it.exercise.name}
+              {((items as unknown as ItemRow[]) ?? []).map((it, idx) => {
+                const exerciseId = it.exercise_id;
+                const ex = it.exercise;
+
+                return (
+                  <div key={it.id} className="rounded-lg border border-border p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="text-sm font-medium">
+                            {idx + 1}. {ex?.name ?? "Unknown exercise"}
+                          </div>
+                          {ex?.modality ? (
+                            <Badge variant="outline">{ex.modality}</Badge>
+                          ) : (
+                            <Badge variant="destructive">Missing</Badge>
+                          )}
                         </div>
-                        <Badge variant="outline">{it.exercise.modality}</Badge>
+                        <div className="text-xs text-muted-foreground">Item order: {it.order}</div>
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        Item order: {it.order}
+
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        <form action={moveItem.bind(null, vaultId, templateId, it.id, "up")}>
+                          <Button
+                            type="submit"
+                            size="sm"
+                            variant="secondary"
+                            disabled={idx === 0}
+                            className="active:scale-95 transition-transform"
+                          >
+                            Up
+                          </Button>
+                        </form>
+
+                        <form action={moveItem.bind(null, vaultId, templateId, it.id, "down")}>
+                          <Button
+                            type="submit"
+                            size="sm"
+                            variant="secondary"
+                            disabled={idx === (((items as unknown as ItemRow[]) ?? []).length ?? 1) - 1}
+                            className="active:scale-95 transition-transform"
+                          >
+                            Down
+                          </Button>
+                        </form>
+
+                        <Link href={`/v/${vaultId}/exercises?edit=${exerciseId}`} scroll={false}>
+                          <Button size="sm" variant="secondary">
+                            Edit
+                          </Button>
+                        </Link>
+                        <form action={removeTemplateItem.bind(null, vaultId, templateId, it.id)}>
+                          <Button
+                            type="submit"
+                            size="sm"
+                            variant="destructive"
+                            className="active:scale-95 transition-transform"
+                          >
+                            Remove
+                          </Button>
+                        </form>
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-end gap-2">
-                      <form action={moveItem.bind(null, vaultId, templateId, it.id, "up")}>
-                        <Button type="submit" size="sm" variant="secondary" disabled={idx === 0}>
-                          Up
-                        </Button>
-                      </form>
+                    <Separator className="my-3" />
 
-                      <form action={moveItem.bind(null, vaultId, templateId, it.id, "down")}>
-                        <Button
-                          type="submit"
-                          size="sm"
-                          variant="secondary"
-                          disabled={idx === (items?.length ?? 1) - 1}
-                        >
-                          Down
-                        </Button>
-                      </form>
-
-                      <form action={removeTemplateItem.bind(null, vaultId, templateId, it.id)}>
-                        <Button type="submit" size="sm" variant="destructive">
-                          Remove
-                        </Button>
-                      </form>
-                    </div>
+                    <SetBlocksControl
+                      initialTargetSets={it.target_sets}
+                      action={setTargetSets.bind(null, vaultId, templateId, it.id)}
+                    />
                   </div>
+                );
+              })}
 
-                  <Separator className="my-3" />
-
-                  <SetBlocksControl
-  initialTargetSets={it.target_sets}
-  action={setTargetSets.bind(null, vaultId,  templateId, it.id)}
-/>
-                </div>
-              ))}
-
-              {(items?.length ?? 0) === 0 && (
+              {(((items as unknown as ItemRow[]) ?? []).length ?? 0) === 0 && (
                 <div className="text-sm text-muted-foreground">
                   No exercises yet. Add one on the right.
                 </div>
@@ -196,7 +223,12 @@ export default async function TemplateEditorPage({
                   ))}
                 </select>
 
-                <Button type="submit" size="sm" disabled={availableExercises.length === 0}>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={availableExercises.length === 0}
+                  className="active:scale-95 transition-transform"
+                >
                   Add
                 </Button>
               </form>
@@ -216,7 +248,8 @@ export default async function TemplateEditorPage({
                 Create an exercise and immediately add it to this template.
               </div>
             </CardHeader>
-            <CardContent className="pt-0">
+
+            <CardContent className="pt-0 space-y-4">
               <form
                 action={createExerciseAndAdd.bind(null, vaultId, templateId)}
                 className="flex flex-col gap-2"
@@ -237,15 +270,21 @@ export default async function TemplateEditorPage({
                     <option value="ISOMETRIC">ISOMETRIC</option>
                   </select>
 
-                  <Button type="submit" size="sm">
+                  <Button type="submit" size="sm" className="active:scale-95 transition-transform">
                     Create + Add
                   </Button>
                 </div>
               </form>
+
+              <Separator />
+
+              <Button asChild type="button" size="sm" variant="secondary" className="w-full">
+                <Link href={`/v/${vaultId}/exercises`}>Manage exercises</Link>
+              </Button>
             </CardContent>
           </Card>
 
-          <Button asChild variant="secondary" className="w-full">
+          <Button asChild type="button" variant="secondary" className="w-full">
             <Link href={`/v/${vaultId}`}>Done</Link>
           </Button>
         </div>
