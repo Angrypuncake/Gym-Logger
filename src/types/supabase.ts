@@ -39,6 +39,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      anatomical_targets: {
+        Row: {
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["anatomical_target_kind"]
+          name: string
+          parent_id: string | null
+          slug: string
+          vault_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["anatomical_target_kind"]
+          name: string
+          parent_id?: string | null
+          slug: string
+          vault_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["anatomical_target_kind"]
+          name?: string
+          parent_id?: string | null
+          slug?: string
+          vault_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "anatomical_targets_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "anatomical_targets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anatomical_targets_vault_id_fkey"
+            columns: ["vault_id"]
+            isOneToOne: false
+            referencedRelation: "vaults"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercise_prs: {
         Row: {
           achieved_at: string
@@ -101,6 +146,52 @@ export type Database = {
           },
           {
             foreignKeyName: "exercise_prs_vault_id_fkey"
+            columns: ["vault_id"]
+            isOneToOne: false
+            referencedRelation: "vaults"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercise_targets: {
+        Row: {
+          created_at: string
+          exercise_id: string
+          role: Database["public"]["Enums"]["anatomical_target_role"]
+          target_id: string
+          vault_id: string
+        }
+        Insert: {
+          created_at?: string
+          exercise_id: string
+          role?: Database["public"]["Enums"]["anatomical_target_role"]
+          target_id: string
+          vault_id: string
+        }
+        Update: {
+          created_at?: string
+          exercise_id?: string
+          role?: Database["public"]["Enums"]["anatomical_target_role"]
+          target_id?: string
+          vault_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_targets_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_targets_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "anatomical_targets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_targets_vault_id_fkey"
             columns: ["vault_id"]
             isOneToOne: false
             referencedRelation: "vaults"
@@ -523,6 +614,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      anatomical_target_kind: "MUSCLE_GROUP" | "TENDON"
+      anatomical_target_role: "PRIMARY" | "SECONDARY" | "STABILIZER"
       modality: "REPS" | "ISOMETRIC"
       pr_type: "REPS_MAX_WEIGHT" | "REPS_MAX_REPS" | "ISO_MAX_DURATION"
     }
@@ -655,6 +748,8 @@ export const Constants = {
   },
   public: {
     Enums: {
+      anatomical_target_kind: ["MUSCLE_GROUP", "TENDON"],
+      anatomical_target_role: ["PRIMARY", "SECONDARY", "STABILIZER"],
       modality: ["REPS", "ISOMETRIC"],
       pr_type: ["REPS_MAX_WEIGHT", "REPS_MAX_REPS", "ISO_MAX_DURATION"],
     },

@@ -1,3 +1,5 @@
+//  C:\Users\Elvis\Documents\Coding\Gymlogger\gymlogger\src\lib\supabase\server.ts
+
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { Database } from "@/types/supabase";
