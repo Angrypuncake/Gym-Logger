@@ -3,14 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import {
   addExerciseToSession,
   saveSet,
-  discardWorkout,
   updateBodyweight,
   addSetToEntry,
   deleteUnloggedSetFromForm,
-  clearStartTime,
-  clearFinishTime,
-  setStartTimeFromForm,
-  setFinishTimeFromForm,
+  moveEntryUp,
+  moveEntryDown,
   removeExerciseFromSession,
   
 } from "./actions";
@@ -174,10 +171,10 @@ export default async function SessionPage({ params }: { params: Promise<{ vaultI
   const endTime = session.finished_at ? toTimeLocal(session.finished_at) : "";
   const { data: entries, error: eErr } = await supabase
     .from("workout_entries")
-    .select("id,order, exercise:exercises(id,name,modality,uses_bodyweight)")
+    .select("id,sort_order, exercise:exercises(id,name,modality,uses_bodyweight)")
     .eq("vault_id", vaultId)
     .eq("session_id", sessionId)
-    .order("order", { ascending: true });
+    .order("sort_order", { ascending: true });
 
   if (eErr) return <pre>{eErr.message}</pre>;
 
@@ -251,6 +248,8 @@ export default async function SessionPage({ params }: { params: Promise<{ vaultI
         addSetAction={addSetToEntry.bind(null, vaultId, sessionId)}
         deleteUnloggedSetAction={deleteUnloggedSetFromForm.bind(null, vaultId, sessionId)}
         removeEntryAction={removeExerciseFromSession.bind(null, vaultId, sessionId)}
+        moveEntryUpAction={moveEntryUp.bind(null, vaultId, sessionId)}
+        moveEntryDownAction={moveEntryDown.bind(null, vaultId, sessionId)}
       />
     </div>
   );

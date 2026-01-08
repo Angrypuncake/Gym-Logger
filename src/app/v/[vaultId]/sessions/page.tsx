@@ -73,9 +73,9 @@ const summaries: SummaryRow[] = (summariesRaw ?? []) as unknown as SummaryRow[];
 
   const { data: templates, error: tErr } = await supabase
     .from("templates")
-    .select("id,name,order")
+    .select("id,name,sort_order")
     .eq("vault_id", vaultId)
-    .order("order", { ascending: true });
+    .order("sort_order", { ascending: true });
 
   
 

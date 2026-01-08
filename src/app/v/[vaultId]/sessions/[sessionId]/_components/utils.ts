@@ -22,7 +22,7 @@ export function fmtSetLabel(
     if (usesBW && bw != null) {
       const external = s.weight_kg ?? 0;
       const total = bw + external;
-      return { top, sub: `tot ${total.toFixed(1)}kg` };
+      return { top, sub: ` ${total.toFixed(1)}kg` };
     }
 
     const sub = s.weight_kg != null ? `${s.weight_kg}kg` : null;
@@ -32,7 +32,7 @@ export function fmtSetLabel(
   const top = s.duration_sec != null ? String(s.duration_sec) : "✓";
 
   if (usesBW && bw != null) {
-    return { top, sub: `tot ${bw.toFixed(1)}kg` };
+    return { top, sub: ` ${bw.toFixed(1)}kg` };
   }
 
   return { top, sub: "s" };

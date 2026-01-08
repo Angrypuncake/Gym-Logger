@@ -12,19 +12,19 @@ export async function createTemplate(vaultId: string, formData: FormData) {
   // next order = max(order)+1
   const { data: last, error: lastErr } = await supabase
     .from("templates")
-    .select("order")
+    .select("sort_order")
     .eq("vault_id", vaultId)
-    .order("order", { ascending: false })
+    .order("sort_order", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (lastErr) throw new Error(lastErr.message);
 
-  const nextOrder = (last?.order ?? 0) + 1;
+  const nextOrder = (last?.sort_order ?? 0) + 1;
 
   const { data: tpl, error } = await supabase
     .from("templates")
-    .insert({ vault_id: vaultId, name, order: nextOrder })
+    .insert({ vault_id: vaultId, name, sort_order: nextOrder })
     .select("id")
     .single();
 

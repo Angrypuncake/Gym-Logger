@@ -267,20 +267,20 @@ export async function addExerciseToSession(vaultId: string, sessionId: string, f
 
   const { data: lastEntry } = await supabase
     .from("workout_entries")
-    .select("order")
+    .select("sort_order")
     .eq("vault_id", vaultId)
     .eq("session_id", sessionId)
-    .order("order", { ascending: false })
+    .order("sort_order", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  const nextOrder = (lastEntry?.order ?? 0) + 1;
+  const nextOrder = (lastEntry?.sort_order ?? 0) + 1;
 
   const entryPayload: TablesInsert<"workout_entries"> = {
     vault_id: vaultId,
     session_id: sessionId,
     exercise_id: exerciseId,
-    order: nextOrder,
+    sort_order: nextOrder,
   };
 
   const { data: entry, error: eErr } = await supabase
@@ -764,4 +764,91 @@ export async function setFinishTimeFromForm(
 
   if (error) throw new Error(error.message);
   revalidatePath(`/v/${vaultId}/sessions/${sessionId}`);
+}
+
+
+// Reorder workout_entries within a session by swapping the `order` field.
+async function swapEntryOrder(params: {
+  vaultId: string;
+  sessionId: string;
+  entryId: string;
+  direction: "UP" | "DOWN";
+}) {
+  const { vaultId, sessionId, entryId, direction } = params;
+  const supabase = await createClient();
+
+  const { data: current, error: curErr } = await supabase
+    .from("workout_entries")
+    .select("id,sort_order")
+    .eq("vault_id", vaultId)
+    .eq("session_id", sessionId)
+    .eq("id", entryId)
+    .single();
+
+  if (curErr) throw new Error(curErr.message);
+  if (!current) return;
+
+  const currentOrder = Number(current.sort_order);
+
+  const base = supabase
+    .from("workout_entries")
+    .select("id,sort_order")
+    .eq("vault_id", vaultId)
+    .eq("session_id", sessionId);
+
+  const { data: neighbor, error: nErr } =
+    direction === "UP"
+      ? await base
+          .lt("sort_order", currentOrder)
+          .order("sort_order", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : await base
+          .gt("sort_order", currentOrder)
+          .order("sort_order", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+  if (nErr) throw new Error(nErr.message);
+  if (!neighbor) return;
+
+  const neighborOrder = Number(neighbor.sort_order);
+
+  // temp swap to avoid unique conflicts
+  const tmp = -2147483648;
+
+  const { error: e1 } = await supabase
+    .from("workout_entries")
+    .update({ sort_order: tmp })
+    .eq("vault_id", vaultId)
+    .eq("session_id", sessionId)
+    .eq("id", current.id);
+  if (e1) throw new Error(e1.message);
+
+  const { error: e2 } = await supabase
+    .from("workout_entries")
+    .update({ sort_order: currentOrder })
+    .eq("vault_id", vaultId)
+    .eq("session_id", sessionId)
+    .eq("id", neighbor.id);
+  if (e2) throw new Error(e2.message);
+
+  const { error: e3 } = await supabase
+    .from("workout_entries")
+    .update({ sort_order: neighborOrder })
+    .eq("vault_id", vaultId)
+    .eq("session_id", sessionId)
+    .eq("id", current.id);
+  if (e3) throw new Error(e3.message);
+
+  revalidatePath(`/v/${vaultId}/sessions/${sessionId}`);
+}
+
+
+export async function moveEntryUp(vaultId: string, sessionId: string, entryId: string) {
+  await swapEntryOrder({ vaultId, sessionId, entryId, direction: "UP" });
+}
+
+export async function moveEntryDown(vaultId: string, sessionId: string, entryId: string) {
+  await swapEntryOrder({ vaultId, sessionId, entryId, direction: "DOWN" });
 }

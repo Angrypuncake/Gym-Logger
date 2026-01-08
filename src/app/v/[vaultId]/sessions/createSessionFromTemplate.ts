@@ -65,10 +65,10 @@ export async function createSessionFromTemplate({
     // 2) Fetch template items (ordered)
     const { data: items, error: tErr } = await supabase
       .from("template_items")
-      .select("exercise_id, order, target_sets")
+      .select("exercise_id, sort_order, target_sets")
       .eq("vault_id", vaultId)
       .eq("template_id", templateId)
-      .order("order", { ascending: true });
+      .order("sort_order", { ascending: true });
 
     if (tErr) throw new Error(tErr.message);
 
@@ -81,15 +81,15 @@ export async function createSessionFromTemplate({
     // 3) Insert workout entries
     const entryRows = templateItems.map((it) => ({
       vault_id: vaultId,
-      session_id: sid,          
+      session_id: sessionId,
       exercise_id: it.exercise_id,
-      order: it.order,
+      sort_order: it.sort_order,
     }));
 
     const { data: entries, error: eErr } = await supabase
       .from("workout_entries")
       .insert(entryRows)
-      .select("id, order");
+      .select("id, sort_order");
 
     if (eErr) throw new Error(eErr.message);
 
@@ -98,13 +98,13 @@ export async function createSessionFromTemplate({
 
     // Map order -> entry_id (order should be unique per template)
     const entryIdByOrder = new Map<number, string>();
-    for (const e of insertedEntries) entryIdByOrder.set(e.order, e.id);
+    for (const e of insertedEntries) entryIdByOrder.set(e.sort_order, e.id);
 
     // 4) Seed planned sets
     const setRows: Array<{ vault_id: string; entry_id: string; set_index: number }> = [];
 
     for (const it of templateItems) {
-      const entryId = entryIdByOrder.get(it.order);
+      const entryId = entryIdByOrder.get(it.sort_order);
       if (!entryId) continue;
 
       const n = Math.max(0, (it.target_sets ?? defaultTargetSets) | 0);

@@ -541,9 +541,9 @@ export type Database = {
         Row: {
           exercise_id: string
           id: string
-          order: number
           rep_max: number | null
           rep_min: number | null
+          sort_order: number
           target_sets: number | null
           template_id: string
           vault_id: string
@@ -551,9 +551,9 @@ export type Database = {
         Insert: {
           exercise_id: string
           id?: string
-          order: number
           rep_max?: number | null
           rep_min?: number | null
+          sort_order: number
           target_sets?: number | null
           template_id: string
           vault_id: string
@@ -561,9 +561,9 @@ export type Database = {
         Update: {
           exercise_id?: string
           id?: string
-          order?: number
           rep_max?: number | null
           rep_min?: number | null
+          sort_order?: number
           target_sets?: number | null
           template_id?: string
           vault_id?: string
@@ -596,19 +596,19 @@ export type Database = {
         Row: {
           id: string
           name: string
-          order: number
+          sort_order: number
           vault_id: string
         }
         Insert: {
           id?: string
           name: string
-          order: number
+          sort_order: number
           vault_id: string
         }
         Update: {
           id?: string
           name?: string
-          order?: number
+          sort_order?: number
           vault_id?: string
         }
         Relationships: [
@@ -640,22 +640,22 @@ export type Database = {
         Row: {
           exercise_id: string
           id: string
-          order: number
           session_id: string
+          sort_order: number
           vault_id: string
         }
         Insert: {
           exercise_id: string
           id?: string
-          order: number
           session_id: string
+          sort_order: number
           vault_id: string
         }
         Update: {
           exercise_id?: string
           id?: string
-          order?: number
           session_id?: string
+          sort_order?: number
           vault_id?: string
         }
         Relationships: [

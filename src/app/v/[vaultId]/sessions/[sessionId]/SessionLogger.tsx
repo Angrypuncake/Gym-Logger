@@ -40,6 +40,10 @@ export default function SessionLogger({
   deleteUnloggedSetAction,
   saveSetAction,
   removeEntryAction,
+  moveEntryUpAction,
+  moveEntryDownAction,
+
+  
 }: {
   entries: EntryRow[];
   allExercises: ExercisePick[];
@@ -51,6 +55,8 @@ export default function SessionLogger({
   deleteUnloggedSetAction?: FnForm;
   saveSetAction?: FnForm; // expects: set_id + fields (blank = keep existing)
   removeEntryAction?: FnEntryId;
+  moveEntryUpAction?: FnEntryId;
+  moveEntryDownAction?: FnEntryId;
 }) {
 
   const [selected, setSelected] = React.useState<{ entryId: string; setId: string } | null>(null);
@@ -82,6 +88,8 @@ export default function SessionLogger({
         addSetAction={addSetAction}
         removeEntryAction={removeEntryAction}
         bodyWeightKg={bodyWeightKg} // add (for set-block totals)
+        moveEntryUpAction={moveEntryUpAction}
+        moveEntryDownAction={moveEntryDownAction}
       />
 
       <div className="hidden lg:block self-start lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] overflow-auto">

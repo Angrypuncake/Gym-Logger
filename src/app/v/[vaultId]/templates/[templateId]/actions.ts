@@ -31,21 +31,21 @@ export async function addExistingExercise(
   // Next order for template_items
   const { data: last, error: lastErr } = await supabase
     .from("template_items")
-    .select("order")
+    .select("sort_order")
     .eq("vault_id", vaultId)
     .eq("template_id", templateId)
-    .order("order", { ascending: false })
+    .order("so`rt_order", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (lastErr) throw new Error(lastErr.message);
-  const nextOrder = (last?.order ?? 0) + 1;
+  const nextOrder = (last?.sort_order ?? 0) + 1;
 
   const { error } = await supabase.from("template_items").insert({
     vault_id: vaultId,
     template_id: templateId,
     exercise_id: exerciseId,
-    order: nextOrder,
+    sort_order: nextOrder,
     target_sets: 3,
   });
 
@@ -77,21 +77,21 @@ export async function createExerciseAndAdd(
   // Next order for template_items
   const { data: last, error: lastErr } = await supabase
     .from("template_items")
-    .select("order")
+    .select("sort_order")
     .eq("vault_id", vaultId)
     .eq("template_id", templateId)
-    .order("order", { ascending: false })
+    .order("sort_order", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (lastErr) throw new Error(lastErr.message);
-  const nextOrder = (last?.order ?? 0) + 1;
+  const nextOrder = (last?.sort_order ?? 0) + 1;
 
   const { error } = await supabase.from("template_items").insert({
     vault_id: vaultId,
     template_id: templateId,
     exercise_id: ex.id,
-    order: nextOrder,
+    sort_order: nextOrder,
     target_sets: 3,
   });
 
@@ -146,10 +146,10 @@ export async function moveItem(
   // Load all items in order
   const { data: items, error } = await supabase
     .from("template_items")
-    .select("id,order")
+    .select("id,sort_order")
     .eq("vault_id", vaultId)
     .eq("template_id", templateId)
-    .order("order", { ascending: true });
+    .order("sort_order", { ascending: true });
 
   if (error) throw new Error(error.message);
 
@@ -165,7 +165,7 @@ export async function moveItem(
   // Swap order values
   const { error: u1 } = await supabase
     .from("template_items")
-    .update({ order: b.order })
+    .update({ sort_order: b.sort_order })
     .eq("id", a.id)
     .eq("vault_id", vaultId);
 
@@ -173,7 +173,7 @@ export async function moveItem(
 
   const { error: u2 } = await supabase
     .from("template_items")
-    .update({ order: a.order })
+    .update({ sort_order: a.sort_order })
     .eq("id", b.id)
     .eq("vault_id", vaultId);
 

@@ -18,7 +18,7 @@ import { ExercisePicker } from "../../exercises/ExercisePicker";
 
 type ItemRow = {
   id: string;
-  order: number;
+  sort_order: number;
   target_sets: number | null;
   exercise_id: string;
   exercise: { id: string; name: string; modality: "REPS" | "ISOMETRIC" } | null;
@@ -34,7 +34,7 @@ export default async function TemplateEditorPage({
 
   const { data: template, error: tErr } = await supabase
     .from("templates")
-    .select("id,name,order")
+    .select("id,name,sort_order")
     .eq("vault_id", vaultId)
     .eq("id", templateId)
     .single();
@@ -43,10 +43,10 @@ export default async function TemplateEditorPage({
 
   const { data: items, error: iErr } = await supabase
     .from("template_items")
-    .select("id,order,target_sets,exercise_id, exercise:exercises(id,name,modality)")
+    .select("id,sort_order,target_sets,exercise_id, exercise:exercises(id,name,modality)")
     .eq("vault_id", vaultId)
     .eq("template_id", templateId)
-    .order("order", { ascending: true });
+    .order("sort_order", { ascending: true });
 
   if (iErr) return <pre>{iErr.message}</pre>;
 

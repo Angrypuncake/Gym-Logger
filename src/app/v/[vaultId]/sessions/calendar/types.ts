@@ -10,7 +10,7 @@ export type SummaryRow = {
     has_pr: boolean;
   };
   
-  export type TemplateRow = { id: string; name: string; order: number };
+  export type TemplateRow = { id: string; name: string; sort_order: number };
   
   export type Filters = {
     templateId: string; // "ALL" or template uuid

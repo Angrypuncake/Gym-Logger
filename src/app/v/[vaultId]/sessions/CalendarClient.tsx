@@ -26,7 +26,7 @@ type SummaryRow = {
   has_pr: boolean;
 };
 
-type TemplateRow = { id: string; name: string; order: number };
+type TemplateRow = { id: string; name: string; sort_order: number };
 
 function clampPct(n: number) {
   return Math.max(0, Math.min(100, Math.round(n)));

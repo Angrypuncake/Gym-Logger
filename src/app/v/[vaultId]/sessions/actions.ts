@@ -43,7 +43,7 @@ async function ensureQuickLogTemplate(supabase: any, vaultId: string) {
 
   const { data: tpl, error: insErr } = await supabase
     .from("templates")
-    .insert({ vault_id: vaultId, name: "Quick Log", order: 9999 })
+    .insert({ vault_id: vaultId, name: "Quick Log", sort_order: 9999 })
     .select("id")
     .single();
 
@@ -177,11 +177,11 @@ export async function quickLogSet(vaultId: string, formData: FormData) {
   // Reuse latest entry for that exercise in this session (avoid maybeSingle multi-row error)
   const { data: existingEntry, error: eFindErr } = await supabase
     .from("workout_entries")
-    .select("id,order")
+    .select("id,sort_order")
     .eq("vault_id", vaultId)
     .eq("session_id", sessionId)
     .eq("exercise_id", exerciseId)
-    .order("order", { ascending: false })
+    .order("sort_order", { ascending: false })
     .limit(1)
     .maybeSingle();
 
@@ -193,20 +193,20 @@ export async function quickLogSet(vaultId: string, formData: FormData) {
   if (!entryId) {
     const { data: lastEntry, error: lastEntryErr } = await supabase
       .from("workout_entries")
-      .select("order")
+      .select("sort_order")
       .eq("vault_id", vaultId)
       .eq("session_id", sessionId)
-      .order("order", { ascending: false })
+      .order("sort_order", { ascending: false })
       .limit(1)
       .maybeSingle();
 
     if (lastEntryErr) throw new Error(lastEntryErr.message);
 
-    const nextOrder = (lastEntry?.order ?? -1) + 1; // 0-based
+    const nextOrder = (lastEntry?.sort_order ?? -1) + 1; // 0-based
 
     const { data: createdEntry, error: eCreateErr } = await supabase
       .from("workout_entries")
-      .insert({ vault_id: vaultId, session_id: sessionId, exercise_id: exerciseId, order: nextOrder })
+      .insert({ vault_id: vaultId, session_id: sessionId, exercise_id: exerciseId, sort_order: nextOrder })
       .select("id")
       .single();
 
