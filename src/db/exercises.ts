@@ -1,10 +1,25 @@
+// src/db/exercises.ts
 import { createClient } from "@/lib/supabase/server";
 import type { Tables, TablesInsert, TablesUpdate, Enums } from "@/types/supabase";
 
 export type Exercise = Tables<"exercises">;
 export type Modality = Enums<"modality">;
 
-// Assumes exercises has: archived_at timestamptz null
+export type ListExercisesPageOpts = {
+  page?: number; // 1-based
+  pageSize?: number; // e.g. 50
+  includeArchived?: boolean; // true = include both active+archived
+  q?: string; // search query
+};
+
+export type ExercisesPageResult = {
+  rows: Exercise[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+// Existing (kept for other callers)
 export async function listExercises(vaultId: string): Promise<Exercise[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -17,6 +32,7 @@ export async function listExercises(vaultId: string): Promise<Exercise[]> {
   return data ?? [];
 }
 
+// Existing (kept for other callers)
 export async function listActiveExercises(vaultId: string): Promise<Exercise[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -28,6 +44,54 @@ export async function listActiveExercises(vaultId: string): Promise<Exercise[]> 
 
   if (error) throw new Error(error.message);
   return data ?? [];
+}
+
+// New: server-side search + pagination (offset-based via range)
+export async function listExercisesPage(
+  vaultId: string,
+  opts: ListExercisesPageOpts = {}
+): Promise<ExercisesPageResult> {
+  const supabase = await createClient();
+
+  const pageSize = Math.max(1, Math.min(200, opts.pageSize ?? 50));
+  const page = Math.max(1, opts.page ?? 1);
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let query = supabase
+    .from("exercises")
+    .select("*", { count: "exact" })
+    .eq("vault_id", vaultId);
+
+  if (!opts.includeArchived) query = query.is("archived_at", null);
+
+  const q = (opts.q ?? "").trim();
+  if (q) query = query.ilike("name", `%${q}%`);
+
+  const { data, count, error } = await query.order("name", { ascending: true }).range(from, to);
+
+  if (error) throw new Error(error.message);
+
+  return {
+    rows: (data ?? []) as Exercise[],
+    total: count ?? 0,
+    page,
+    pageSize,
+  };
+}
+
+// New: fetch the selected exercise even if it’s not on the current page
+export async function getExerciseById(vaultId: string, id: string): Promise<Exercise | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("exercises")
+    .select("*")
+    .eq("vault_id", vaultId)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return (data ?? null) as Exercise | null;
 }
 
 export async function createExercise(
@@ -96,8 +160,6 @@ export async function deleteExerciseHard(vaultId: string, id: string) {
 export async function getExerciseUsage(vaultId: string, exerciseId: string) {
   const supabase = await createClient();
 
-  // NOTE: exercise_targets likely does NOT have vault_id in your schema.
-  // If so, remove the vault_id filter for that table.
   const [workouts, templates, targets, prs] = await Promise.all([
     supabase
       .from("workout_entries")

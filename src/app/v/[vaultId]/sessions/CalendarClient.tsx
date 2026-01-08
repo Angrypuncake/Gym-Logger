@@ -171,13 +171,16 @@ function DayCell({
   day,
   inMonth,
   sessions,
+  selected,
   onOpen,
 }: {
   day: Date;
   inMonth: boolean;
   sessions: SummaryRow[];
+  selected: boolean;
   onOpen: () => void;
 }) {
+
   const dayNum = day.getUTCDate();
   const hasAnyPr = sessions.some((s) => s.has_pr);
 
@@ -189,9 +192,19 @@ function DayCell({
       type="button"
       onClick={onOpen}
       className={[
-        "rounded-xl border p-2 text-left min-h-[92px] transition-colors",
+        "rounded-xl border p-2 text-left min-h-[92px]",
+        "transition-colors transition-shadow duration-150",
         inMonth ? "bg-background" : "bg-muted/30 text-muted-foreground",
+      
+        // hover feedback
+        "hover:border-primary/40 hover:bg-primary/5",
+      
+        // active / selected feedback
+        selected
+          ? "ring-2 ring-primary border-primary bg-primary/10 shadow-sm"
+          : "ring-0",
       ].join(" ")}
+      
     >
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold text-foreground">{dayNum}</div>
@@ -382,21 +395,24 @@ export default function CalendarClient({
       </div>
 
       <div className="grid grid-cols-7 gap-2">
-        {days.map((d) => {
-          const dayKey = isoDateUTC(d);
-          const inMonth = d.getUTCMonth() === month0;
-          const sessions = filteredByDay.get(dayKey) ?? [];
+      {days.map((d) => {
+        const dayKey = isoDateUTC(d);
+        const inMonth = d.getUTCMonth() === month0;
+        const sessions = filteredByDay.get(dayKey) ?? [];
+        const selected = openDay === dayKey;
 
-          return (
-            <DayCell
-              key={dayKey}
-              day={d}
-              inMonth={inMonth}
-              sessions={sessions}
-              onOpen={() => setOpenDay(dayKey)}
-            />
-          );
-        })}
+        return (
+          <DayCell
+            key={dayKey}
+            day={d}
+            inMonth={inMonth}
+            sessions={sessions}
+            selected={selected}
+            onOpen={() => setOpenDay(dayKey)}
+          />
+        );
+      })}
+
       </div>
 
       {openDay && (

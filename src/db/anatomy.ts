@@ -189,3 +189,113 @@ export async function listExerciseTargets(exerciseId: string): Promise<ExerciseT
   
     return out;
   }
+
+  export type TendonExposureWithTarget = {
+    tendon_target_id: string;
+    modality: Enums<"modality"> | null; 
+    confidence: string;
+    target: AnatomicalTarget;
+  };
+
+
+  export async function listExerciseTendonExposure(exerciseId: string): Promise<TendonExposureWithTarget[]> {
+    const supabase = await createClient();
+  
+    const { data, error } = await supabase
+      .from("exercise_tendon_exposure")
+      .select(`
+        tendon_target_id,
+        modality,
+        confidence,
+        anatomical_targets (
+          id, kind, name, slug, parent_id, created_at, vault_id
+        )
+      `)
+      .eq("exercise_id", exerciseId);
+  
+    if (error) throw new Error(error.message);
+  
+    const rows = (data ?? []) as any[];
+    return rows
+      .filter((r) => r.anatomical_targets)
+      .map((r) => ({
+        tendon_target_id: r.tendon_target_id,
+        modality: r.modality ?? null,
+        confidence: r.confidence ?? "HIGH",
+        target: r.anatomical_targets as AnatomicalTarget,
+      }))
+      .sort((a, b) => a.target.name.localeCompare(b.target.name));
+  }
+  
+  export async function listTendonExposureForExercises(
+    vaultId: string,
+    exerciseIds: string[]
+  ): Promise<Map<string, TendonExposureWithTarget[]>> {
+    const supabase = await createClient();
+    if (exerciseIds.length === 0) return new Map();
+  
+    const { data, error } = await supabase
+      .from("exercise_tendon_exposure")
+      .select(`
+        exercise_id,
+        tendon_target_id,
+        modality,
+        confidence,
+        anatomical_targets (
+          id, kind, name, slug, parent_id, created_at, vault_id
+        )
+      `)
+      .eq("vault_id", vaultId)
+      .in("exercise_id", exerciseIds);
+  
+    if (error) throw new Error(error.message);
+  
+    const out = new Map<string, TendonExposureWithTarget[]>();
+    for (const r of (data ?? []) as any[]) {
+      if (!r.anatomical_targets) continue;
+      const item: TendonExposureWithTarget = {
+        tendon_target_id: r.tendon_target_id,
+        modality: r.modality ?? null,
+        confidence: r.confidence ?? "HIGH",
+        target: r.anatomical_targets as AnatomicalTarget,
+      };
+      const arr = out.get(r.exercise_id) ?? [];
+      arr.push(item);
+      out.set(r.exercise_id, arr);
+    }
+  
+    // optional: sort each list by tendon name
+    for (const [k, arr] of out) arr.sort((a, b) => a.target.name.localeCompare(b.target.name));
+    return out;
+  }
+
+  export type TendonExposureRow = {
+    tendon_target_id: string;
+    anatomical_targets: { id: string; name: string; slug: string } | null;
+  };
+  
+  export async function listExerciseTendons(exerciseId: string) {
+    const supabase = await createClient();
+  
+    const { data, error } = await supabase
+      .from("exercise_tendon_exposure")
+      .select(
+        `
+        tendon_target_id,
+        anatomical_targets (
+          id,
+          name,
+          slug
+        )
+      `
+      )
+      .eq("exercise_id", exerciseId);
+  
+    if (error) throw new Error(error.message);
+  
+    const rows = (data ?? []) as TendonExposureRow[];
+    return rows
+      .filter((r) => r.anatomical_targets)
+      .map((r) => r.anatomical_targets!)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }

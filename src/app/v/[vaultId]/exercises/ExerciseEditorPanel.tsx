@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { removeExercise, updateExerciseAction, updateExerciseTargetsAction } from "./actions";
 import { listAnatomicalTargets, listExerciseTargets } from "@/db/anatomy";
 import { MuscleRoleBoard } from "./MuscleRoleBoard";
+import ExerciseTendonBadges from "./ExerciseTendonBadges";
 
 type Exercise = {
   id: string;
@@ -92,6 +93,7 @@ export async function ExerciseEditorPanel({
 
   <Separator />
 
+
 </CardContent>
       <CardContent className="pt-0 space-y-4">
 
@@ -120,6 +122,12 @@ export async function ExerciseEditorPanel({
         </form>
 
         <Separator />
+
+        <Separator />
+
+<ExerciseTendonBadges exerciseId={exercise.id} />
+
+<Separator />
 
         <form action={removeExercise.bind(null, vaultId, exercise.id)}>
           <Button type="submit" variant="destructive" className="active:scale-95 transition-transform">

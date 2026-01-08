@@ -199,6 +199,55 @@ export type Database = {
           },
         ]
       }
+      exercise_tendon_exposure: {
+        Row: {
+          confidence: string
+          created_at: string
+          exercise_id: string
+          modality: Database["public"]["Enums"]["modality"] | null
+          tendon_target_id: string
+          vault_id: string
+        }
+        Insert: {
+          confidence?: string
+          created_at?: string
+          exercise_id: string
+          modality?: Database["public"]["Enums"]["modality"] | null
+          tendon_target_id: string
+          vault_id: string
+        }
+        Update: {
+          confidence?: string
+          created_at?: string
+          exercise_id?: string
+          modality?: Database["public"]["Enums"]["modality"] | null
+          tendon_target_id?: string
+          vault_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ete_exercise_fk"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ete_tendon_fk"
+            columns: ["tendon_target_id"]
+            isOneToOne: false
+            referencedRelation: "anatomical_targets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ete_vault_fk"
+            columns: ["vault_id"]
+            isOneToOne: false
+            referencedRelation: "vaults"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercises: {
         Row: {
           archived_at: string | null

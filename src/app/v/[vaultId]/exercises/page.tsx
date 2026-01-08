@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { listExercises } from "@/db/exercises";
+import { listExercisesPage, getExerciseById } from "@/db/exercises";
 import { listPrimaryMuscleGroupsForExercises } from "@/db/anatomy";
 import {
   addExercise,
@@ -20,13 +20,22 @@ export const dynamic = "force-dynamic";
 
 type SearchParams = {
   edit?: string;
-  archived?: string; // "1" to show archived in list
+  archived?: string; // "1" to include archived in list
+  q?: string; // search
+  page?: string; // 1-based
+  pageSize?: string; // optional
 };
 
-function buildExercisesHref(vaultId: string, params: { edit?: string; archived?: string }) {
+function buildExercisesHref(
+  vaultId: string,
+  params: { edit?: string; archived?: string; q?: string; page?: string; pageSize?: string }
+) {
   const sp = new URLSearchParams();
   if (params.edit) sp.set("edit", params.edit);
   if (params.archived) sp.set("archived", params.archived);
+  if (params.q) sp.set("q", params.q);
+  if (params.page) sp.set("page", params.page);
+  if (params.pageSize) sp.set("pageSize", params.pageSize);
   const qs = sp.toString();
   return `/v/${vaultId}/exercises${qs ? `?${qs}` : ""}`;
 }
@@ -43,10 +52,29 @@ export default async function ExercisesPage({
 
   if (!vaultId || vaultId === "undefined") redirect(`/`);
 
-  const allExercises = await listExercises(vaultId);
-
   const showArchived = sp?.archived === "1";
-  const exercises = showArchived ? allExercises : allExercises.filter((e: any) => !e.archived_at);
+  const qRaw = (sp?.q ?? "").trim();
+
+  const pageSizeNum = (() => {
+    const n = Number.parseInt(sp?.pageSize ?? "10", 10);
+    if (!Number.isFinite(n)) return 10;
+    return Math.max(10, Math.min(200, n));
+  })();
+
+  
+
+  const pageNum = (() => {
+    const n = Number.parseInt(sp?.page ?? "1", 10);
+    if (!Number.isFinite(n)) return 1;
+    return Math.max(1, n);
+  })();
+
+  const { rows: exercises, total } = await listExercisesPage(vaultId, {
+    includeArchived: showArchived,
+    q: qRaw || undefined,
+    page: pageNum,
+    pageSize: pageSizeNum,
+  });
 
   const primaryByExerciseId = await listPrimaryMuscleGroupsForExercises(
     vaultId,
@@ -54,12 +82,42 @@ export default async function ExercisesPage({
   );
 
   const editId = sp?.edit;
-  const selected = editId ? (allExercises.find((e) => e.id === editId) ?? null) : null;
+  const selected = editId ? await getExerciseById(vaultId, editId) : null;
   const selectedIsArchived = Boolean((selected as any)?.archived_at);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSizeNum));
+  const hasPrev = pageNum > 1;
+  const hasNext = pageNum < totalPages;
 
   const toggleArchivedHref = buildExercisesHref(vaultId, {
     edit: editId,
+    q: qRaw || undefined,
+    pageSize: String(pageSizeNum),
+    page: "1",
     archived: showArchived ? undefined : "1",
+  });
+
+  const clearSearchHref = buildExercisesHref(vaultId, {
+    edit: editId,
+    archived: showArchived ? "1" : undefined,
+    pageSize: String(pageSizeNum),
+    page: "1",
+  });
+
+  const prevHref = buildExercisesHref(vaultId, {
+    edit: editId,
+    archived: showArchived ? "1" : undefined,
+    q: qRaw || undefined,
+    pageSize: String(pageSizeNum),
+    page: String(pageNum - 1),
+  });
+
+  const nextHref = buildExercisesHref(vaultId, {
+    edit: editId,
+    archived: showArchived ? "1" : undefined,
+    q: qRaw || undefined,
+    pageSize: String(pageSizeNum),
+    page: String(pageNum + 1),
   });
 
   return (
@@ -122,6 +180,37 @@ export default async function ExercisesPage({
                   </Link>
                 </Button>
               </div>
+
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <form method="get" className="flex items-center gap-2 w-full sm:max-w-[380px]">
+                  {showArchived ? <input type="hidden" name="archived" value="1" /> : null}
+                  <input type="hidden" name="pageSize" value={String(pageSizeNum)} />
+                  {/* omit edit + page so searching resets selection + goes to page 1 */}
+
+                  <input
+                    name="q"
+                    defaultValue={qRaw}
+                    placeholder="Search exercises"
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+
+                  <Button size="sm" type="submit" variant="secondary">
+                    Search
+                  </Button>
+
+                  {qRaw ? (
+                    <Button asChild size="sm" type="button" variant="ghost">
+                      <Link href={clearSearchHref} scroll={false}>
+                        Clear
+                      </Link>
+                    </Button>
+                  ) : null}
+                </form>
+
+                <div className="text-xs text-muted-foreground">
+                  {total} total · page {pageNum}/{totalPages}
+                </div>
+              </div>
             </CardHeader>
 
             <CardContent className="pt-0">
@@ -133,7 +222,10 @@ export default async function ExercisesPage({
 
                   const rowHref = buildExercisesHref(vaultId, {
                     edit: e.id,
+                    q: qRaw || undefined,
                     archived: showArchived ? "1" : undefined,
+                    pageSize: String(pageSizeNum),
+                    page: String(pageNum),
                   });
 
                   return (
@@ -189,8 +281,34 @@ export default async function ExercisesPage({
 
                 {exercises.length === 0 && (
                   <div className="py-6 text-sm text-muted-foreground">
-                    {showArchived ? "No exercises." : "No active exercises. Create one above."}
+                    {qRaw ? "No matches." : showArchived ? "No exercises." : "No active exercises. Create one above."}
                   </div>
+                )}
+              </div>
+
+              <div className="mt-4 flex items-center justify-between">
+                {hasPrev ? (
+                  <Button asChild size="sm" variant="secondary">
+                    <Link href={prevHref} scroll={false}>
+                      ← Prev
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="secondary" disabled>
+                    ← Prev
+                  </Button>
+                )}
+
+                {hasNext ? (
+                  <Button asChild size="sm" variant="secondary">
+                    <Link href={nextHref} scroll={false}>
+                      Next →
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="secondary" disabled>
+                    Next →
+                  </Button>
                 )}
               </div>
             </CardContent>
