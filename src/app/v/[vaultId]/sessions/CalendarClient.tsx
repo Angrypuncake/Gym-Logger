@@ -145,15 +145,7 @@ function CalendarFilters({
         ))}
       </select>
 
-      <select
-        className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-        value={filters.modality}
-        onChange={(e) => setFilters((x) => ({ ...x, modality: e.target.value as any }))}
-      >
-        <option value="ALL">All modalities</option>
-        <option value="REPS">REPS</option>
-        <option value="ISOMETRIC">ISOMETRIC</option>
-      </select>
+
 
       <label className="flex items-center gap-2 text-sm">
         <input
