@@ -12,12 +12,14 @@ export default function VaultNav({
   active,
 }: {
   vaultId: string;
-  active?: "home" | "sessions" | "exercises" | "tendon_insights";
+  active?: "home" | "sessions" | "exercises" | "tendon_insights" | "analytics";
 }) {
   const items: Array<Item & { key: NonNullable<typeof active> }> = [
     { key: "home", label: "Home", href: `/v/${vaultId}` },
+    { key: "sessions", label: "Sessions", href: `/v/${vaultId}/sessions` },
     { key: "exercises", label: "Exercises", href: `/v/${vaultId}/exercises` },
     { key: "tendon_insights", label: "Tendon insights", href: `/v/${vaultId}/tendon-insights` },
+    { key: "analytics", label: "Analytics", href: `/v/${vaultId}/analytics` },
   ];
 
   return (

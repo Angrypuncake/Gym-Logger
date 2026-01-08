@@ -3,6 +3,7 @@
 
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import type { EntryRow, FnForm, SetRow } from "./types";
 import { isSetLogged, safeNumber } from "./utils";
@@ -12,18 +13,21 @@ type SelectedSet = { entry: EntryRow; set: SetRow } | null;
 export function SelectedSetPanel({
   selectedSet,
   bodyWeightKg,
+  updateBodyweightAction,
   showTotalLoad,
+  setShowTotalLoad,
   onClearSelection,
   saveSetAction,
   deleteUnloggedSetAction,
 }: {
   selectedSet: SelectedSet;
   bodyWeightKg: number | null;
+  updateBodyweightAction?: FnForm; // expects: body_weight_kg
   showTotalLoad: boolean;
+  setShowTotalLoad: (v: boolean) => void;
   onClearSelection: () => void;
   saveSetAction?: FnForm; // expects: set_id, reps/weight_kg/duration_sec (blank = keep existing)
   deleteUnloggedSetAction?: (setId: string) => Promise<void>;
-
 }) {
   const [weightStr, setWeightStr] = React.useState("");
   const [repsStr, setRepsStr] = React.useState("");
@@ -63,9 +67,6 @@ export function SelectedSetPanel({
   const logged = selectedSet ? isSetLogged(selectedSet.set) : false;
   const canDelete = !!selectedSet && !logged && !!deleteUnloggedSetAction;
 
-  console.log(deleteUnloggedSetAction)
-
-
   const prevSets = React.useMemo(() => {
     if (!selectedSet) return [];
     return selectedSet.entry.sets
@@ -97,7 +98,6 @@ export function SelectedSetPanel({
     setRepsStr(String(lastSetWithReps.reps));
   }
 
-
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -117,73 +117,72 @@ export function SelectedSetPanel({
             <input type="hidden" name="set_id" value={selectedSet.set.id} />
 
             {selectedSet.entry.exercise.modality === "REPS" ? (
-  <div className="space-y-2">
-    <div className="grid grid-cols-2 gap-2">
-      <div className="space-y-1">
-        <div className="text-xs text-muted-foreground">External (kg)</div>
-        <input
-          name="weight_kg"
-          inputMode="decimal"
-          placeholder="(blank = unset)"
-          value={weightStr}
-          onChange={(e) => setWeightStr(e.target.value)}
-          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-      </div>
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted-foreground">External (kg)</div>
+                    <input
+                      name="weight_kg"
+                      inputMode="decimal"
+                      placeholder="(blank = unset)"
+                      value={weightStr}
+                      onChange={(e) => setWeightStr(e.target.value)}
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  </div>
 
-      <div className="space-y-1">
-        <div className="text-xs text-muted-foreground">Reps</div>
-        <input
-          name="reps"
-          inputMode="numeric"
-          placeholder="(blank = unset)"
-          value={repsStr}
-          onChange={(e) => setRepsStr(e.target.value)}
-          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-      </div>
-    </div>
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted-foreground">Reps</div>
+                    <input
+                      name="reps"
+                      inputMode="numeric"
+                      placeholder="(blank = unset)"
+                      value={repsStr}
+                      onChange={(e) => setRepsStr(e.target.value)}
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  </div>
+                </div>
 
-    {selectedSet.set.set_index > 0 && (
-      <div className="grid grid-cols-2 gap-2">
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="justify-center"
-          disabled={!canSameWeight}
-          onClick={applySameWeight}
-        >
-          Same weight
-        </Button>
+                {selectedSet.set.set_index > 0 && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="justify-center"
+                      disabled={!canSameWeight}
+                      onClick={applySameWeight}
+                    >
+                      Same weight
+                    </Button>
 
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="justify-center"
-          disabled={!canSameReps}
-          onClick={applySameReps}
-        >
-          Same reps
-        </Button>
-      </div>
-    )}
-  </div>
-) : (
-  <div className="space-y-1">
-    <div className="text-xs text-muted-foreground">Duration (sec)</div>
-    <input
-      name="duration_sec"
-      inputMode="numeric"
-      placeholder="(blank = unset)"
-      value={durationStr}
-      onChange={(e) => setDurationStr(e.target.value)}
-      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    />
-  </div>
-)}
-
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="justify-center"
+                      disabled={!canSameReps}
+                      onClick={applySameReps}
+                    >
+                      Same reps
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <div className="text-xs text-muted-foreground">Duration (sec)</div>
+                <input
+                  name="duration_sec"
+                  inputMode="numeric"
+                  placeholder="(blank = unset)"
+                  value={durationStr}
+                  onChange={(e) => setDurationStr(e.target.value)}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </div>
+            )}
 
             {totalLoad != null && (
               <div className="text-sm">
@@ -193,38 +192,70 @@ export function SelectedSetPanel({
             )}
 
             <div className="flex items-center gap-2">
-            <Button type="submit" className="flex-1" disabled={!saveSetAction}>
+              <Button type="submit" className="flex-1" disabled={!saveSetAction}>
                 Save set
-            </Button>
+              </Button>
 
-            <Button
+              <Button
                 type="submit"
                 variant="secondary"
                 disabled={!saveSetAction}
                 onClick={() => {
-                setWeightStr("");
-                setRepsStr("");
-                setDurationStr("");
-                setTimeout(() => onClearSelection(), 0);
+                  setWeightStr("");
+                  setRepsStr("");
+                  setDurationStr("");
+                  setTimeout(() => onClearSelection(), 0);
                 }}
-            >
+              >
                 Clear selection
-            </Button>
+              </Button>
 
-            {canDelete && (
-            <Button type="submit" variant="destructive" formAction={deleteUnloggedSetAction}>
-                Delete
-            </Button>
-            )}
-
+              {canDelete && (
+                <Button type="submit" variant="destructive" formAction={deleteUnloggedSetAction}>
+                  Delete
+                </Button>
+              )}
             </div>
-
-
-
-
-
           </form>
         )}
+
+        {/* Session settings moved here to reduce right-column clutter */}
+        <Separator />
+
+        <details className="rounded-md border border-border bg-muted/5 px-3 py-2">
+          <summary className="cursor-pointer select-none text-sm font-medium">
+            Session settings
+          </summary>
+
+          <div className="mt-3 space-y-3">
+            <form action={updateBodyweightAction} className="flex items-center gap-2">
+              <div className="w-24 shrink-0 text-xs text-muted-foreground">Bodyweight</div>
+              <input
+                name="body_weight_kg"
+                inputMode="decimal"
+                placeholder="kg"
+                defaultValue={bodyWeightKg ?? ""}
+                className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                disabled={!updateBodyweightAction}
+              />
+              <Button type="submit" variant="secondary" size="sm" disabled={!updateBodyweightAction}>
+                Save
+              </Button>
+            </form>
+
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={showTotalLoad}
+                onChange={(e) => setShowTotalLoad(e.target.checked)}
+              />
+              <span>Show total load (BW + external) for BW exercises</span>
+            </label>
+
+            <div className="text-xs text-muted-foreground">Totals are informational.</div>
+          </div>
+        </details>
       </CardContent>
     </Card>
   );

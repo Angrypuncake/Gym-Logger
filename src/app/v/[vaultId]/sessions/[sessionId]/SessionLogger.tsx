@@ -5,7 +5,6 @@ import * as React from "react";
 import type { EntryRow, ExercisePick, FnForm } from "./_components/types";
 
 import { SelectedSetPanel } from "./_components/SelectedSetPanel";
-import { SessionMetaPanel } from "./_components/SessionMetaPanel";
 import { AddExercisePanel } from "./_components/AddExercisePanel";
 import { ExercisesPanel } from "./_components/ExercisePanel";
 
@@ -50,37 +49,33 @@ export default function SessionLogger({
   }, [selected, entries]);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1.2fr_.8fr_.8fr] items-start">
+    <div className="grid gap-4 lg:grid-cols-[1.2fr_.9fr] items-start">
       <ExercisesPanel
         entries={entries}
         selected={selected}
         onSelect={(entryId, setId) => setSelected({ entryId, setId })}
         addSetAction={addSetAction}
         removeEntryAction={removeEntryAction}
-        
-        
       />
 
-      <SelectedSetPanel
-        selectedSet={selectedSet}
-        bodyWeightKg={bodyWeightKg}
-        showTotalLoad={showTotalLoad}
-        onClearSelection={() => setSelected(null)}
-        saveSetAction={saveSetAction}
-        deleteUnloggedSetAction={deleteUnloggedSetAction}
-        
-      />
+    <div className="self-start lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] overflow-auto">
+            <SelectedSetPanel
+              selectedSet={selectedSet}
+            bodyWeightKg={bodyWeightKg}
+              updateBodyweightAction={updateBodyweightAction}
+              showTotalLoad={showTotalLoad}
+              setShowTotalLoad={setShowTotalLoad}
+              onClearSelection={() => setSelected(null)}
+              saveSetAction={saveSetAction}
+              deleteUnloggedSetAction={deleteUnloggedSetAction}
+            />
+          </div>
 
-      <div className="space-y-4">
-        <SessionMetaPanel
-          bodyWeightKg={bodyWeightKg}
-          updateBodyweightAction={updateBodyweightAction}
-          showTotalLoad={showTotalLoad}
-          setShowTotalLoad={setShowTotalLoad}
-        />
+          <div className="lg:col-span-2">
+            <AddExercisePanel allExercises={allExercises} addExerciseAction={addExerciseAction} />
+          </div>
 
-        <AddExercisePanel allExercises={allExercises} addExerciseAction={addExerciseAction} />
-      </div>
+
     </div>
   );
 }

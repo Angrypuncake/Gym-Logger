@@ -124,7 +124,7 @@ export function ExercisesPanel({
         })}
 
         {entries.length === 0 && (
-          <div className="text-sm text-muted-foreground">No exercises yet. Add one on the right.</div>
+          <div className="text-sm text-muted-foreground">No exercises yet. Add one below.</div>
         )}
       </CardContent>
     </Card>
