@@ -1,4 +1,3 @@
-// src/app/v/[vaultId]/sessions/[sessionId]/SessionLogger.tsx
 "use client";
 
 import * as React from "react";
@@ -7,6 +6,29 @@ import type { EntryRow, ExercisePick, FnEntryId, FnForm } from "./_components/ty
 import { SelectedSetPanel } from "./_components/SelectedSetPanel";
 import { AddExercisePanel } from "./_components/AddExercisePanel";
 import { ExercisesPanel } from "./_components/ExercisePanel";
+import { MobileSetSheet } from "./_components/MobileSetSheet";
+
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = React.useState(false);
+
+  React.useEffect(() => {
+    const m = window.matchMedia(query);
+    const onChange = () => setMatches(m.matches);
+
+    onChange();
+
+    // Safari fallback
+    if (m.addEventListener) m.addEventListener("change", onChange);
+    else m.addListener(onChange);
+
+    return () => {
+      if (m.removeEventListener) m.removeEventListener("change", onChange);
+      else m.removeListener(onChange);
+    };
+  }, [query]);
+
+  return matches;
+}
 
 export default function SessionLogger({
   entries,
@@ -33,6 +55,8 @@ export default function SessionLogger({
   const [showTotalLoad, setShowTotalLoad] = React.useState(false);
   const [selected, setSelected] = React.useState<{ entryId: string; setId: string } | null>(null);
 
+  const isMobile = useMediaQuery("(max-width: 1023px)"); // < lg
+
   React.useEffect(() => {
     if (!selected) return;
     const entry = entries.find((e) => e.id === selected.entryId);
@@ -48,6 +72,8 @@ export default function SessionLogger({
     return { entry, set };
   }, [selected, entries]);
 
+  const mobileEditorOpen = isMobile && !!selectedSet;
+
   return (
     <div className="grid gap-4 lg:grid-cols-[1.2fr_.9fr] items-start">
       <ExercisesPanel
@@ -58,24 +84,37 @@ export default function SessionLogger({
         removeEntryAction={removeEntryAction}
       />
 
-    <div className="self-start lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] overflow-auto">
-            <SelectedSetPanel
-              selectedSet={selectedSet}
-            bodyWeightKg={bodyWeightKg}
-              updateBodyweightAction={updateBodyweightAction}
-              showTotalLoad={showTotalLoad}
-              setShowTotalLoad={setShowTotalLoad}
-              onClearSelection={() => setSelected(null)}
-              saveSetAction={saveSetAction}
-              deleteUnloggedSetAction={deleteUnloggedSetAction}
-            />
-          </div>
+      {/* Desktop editor column only */}
+      <div className="hidden lg:block self-start lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] overflow-auto">
+        <SelectedSetPanel
+          selectedSet={selectedSet}
+          bodyWeightKg={bodyWeightKg}
+          updateBodyweightAction={updateBodyweightAction}
+          showTotalLoad={showTotalLoad}
+          setShowTotalLoad={setShowTotalLoad}
+          onClearSelection={() => setSelected(null)}
+          saveSetAction={saveSetAction}
+          deleteUnloggedSetAction={deleteUnloggedSetAction}
+        />
+      </div>
 
-          <div className="lg:col-span-2">
-            <AddExercisePanel allExercises={allExercises} addExerciseAction={addExerciseAction} />
-          </div>
+      <div className="lg:col-span-2">
+        <AddExercisePanel allExercises={allExercises} addExerciseAction={addExerciseAction} />
+      </div>
 
-
+      {/* Mobile bottom-sheet editor */}
+      <MobileSetSheet open={mobileEditorOpen} onClose={() => setSelected(null)}>
+        <SelectedSetPanel
+          selectedSet={selectedSet}
+          bodyWeightKg={bodyWeightKg}
+          updateBodyweightAction={updateBodyweightAction}
+          showTotalLoad={showTotalLoad}
+          setShowTotalLoad={setShowTotalLoad}
+          onClearSelection={() => setSelected(null)}
+          saveSetAction={saveSetAction}
+          deleteUnloggedSetAction={deleteUnloggedSetAction}
+        />
+      </MobileSetSheet>
     </div>
   );
 }

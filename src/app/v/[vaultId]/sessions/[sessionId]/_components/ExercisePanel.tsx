@@ -28,8 +28,8 @@ export function ExercisesPanel({
       <CardHeader className="pb-3">
         <CardTitle className="text-sm">Exercises</CardTitle>
         <div className="text-sm text-muted-foreground">
-          Click a set block to select. Edit on the right.
-        </div>
+        Tap a set block to edit.
+      </div>
       </CardHeader>
 
       <CardContent className="pt-0 space-y-3">
@@ -53,35 +53,39 @@ export function ExercisesPanel({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-              {addSetAction ? (
-                <form action={addSetAction.bind(null, entry.id)} className="contents">
-                  <Button type="submit" size="sm" variant="secondary">
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                {addSetAction ? (
+                  <form action={addSetAction.bind(null, entry.id)} className="contents">
+                    <Button type="submit" size="sm" variant="secondary" className="h-9 px-2 sm:px-3">
+                      + Set
+                    </Button>
+                  </form>
+                ) : (
+                  <Button size="sm" variant="secondary" disabled className="h-9 px-2 sm:px-3">
                     + Set
                   </Button>
-                </form>
-              ) : (
-                <Button size="sm" variant="secondary" disabled>
-                  + Set
-                </Button>
-              )}
+                )}
 
-              {removeEntryAction ? (
-                <form action={removeEntryAction.bind(null, entry.id)} className="contents">
-                  <ConfirmSubmitButton
-                    type="submit"
-                    size="sm"
-                    variant="destructive"
-                    disabled={!canRemove}
-                    confirmText={`Remove "${ex.name}" from this session? (Only allowed if no sets are logged.)`}
-                  >
-                    Remove
-                  </ConfirmSubmitButton>
-                </form>
-              ) : null}
+                {removeEntryAction ? (
+                  <form action={removeEntryAction.bind(null, entry.id)} className="contents">
+                    <ConfirmSubmitButton
+                      variant="destructive"
+                      size="sm"
+                      className="h-9 px-2 sm:px-3"
+                      confirmText="Discard this session? This deletes the session and all entries/sets."
+                    >
+                      <span className="hidden sm:inline">Discard</span>
+                      <span className="sm:hidden">Del</span>
+                    </ConfirmSubmitButton>
 
-              <Badge variant="secondary">{total} sets</Badge>
-            </div>
+                  </form>
+                ) : null}
+
+                <Badge variant="secondary" className="hidden sm:inline-flex">
+                  {total} sets
+                </Badge>
+              </div>
+
 
 
                 
