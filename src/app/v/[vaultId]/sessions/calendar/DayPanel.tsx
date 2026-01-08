@@ -8,9 +8,10 @@ import { Card } from "@/components/ui/card";
 import type { SummaryRow, TemplateRow } from "./types";
 import { pctDone } from "./utils";
 
-import { createSessionAction } from "../../actions";
-import { discardWorkout } from "../../[sessionId]/actions";
-import ConfirmSubmitButton from "../../[sessionId]/ConfirmSubmitButton";
+
+import { discardWorkout } from "../[sessionId]/actions";
+import ConfirmSubmitButton from "../[sessionId]/ConfirmSubmitButton";
+import { createSessionAction } from "../actions";
 
 export function DayPanel({
   vaultId,
