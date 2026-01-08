@@ -5,19 +5,13 @@ type CreateSessionFromTemplateParams = {
   vaultId: string;
   templateId: string;
   sessionDate: string; // YYYY-MM-DD
-
-  // optional timekeeping (nullable)
-  startedAt?: string | null;  // ISO string
-  finishedAt?: string | null; // ISO string
-
-  // optional session fields
+  startedAt?: string | null;
+  finishedAt?: string | null;
   notes?: string | null;
   rpe?: number | null;
   tags?: string[] | null;
   bodyWeightKg?: number | null;
-
-  // if template_items.target_sets is null, how many planned sets to seed
-  defaultTargetSets?: number; // default 0
+  defaultTargetSets?: number;
 };
 
 export async function createSessionFromTemplate({
@@ -34,7 +28,8 @@ export async function createSessionFromTemplate({
 }: CreateSessionFromTemplateParams): Promise<{ sessionId: string }> {
   const supabase = await createClient();
 
-  let sessionId: string | null = null;
+  // only for cleanup
+  let createdSessionId: string | null = null;
   let entryIds: string[] = [];
 
   try {
@@ -44,7 +39,7 @@ export async function createSessionFromTemplate({
       .insert({
         vault_id: vaultId,
         template_id: templateId,
-        planned_template_id: templateId, // keep; you can change later if you support re-planning
+        planned_template_id: templateId,
         session_date: sessionDate,
         started_at: startedAt,
         finished_at: finishedAt,
@@ -56,11 +51,11 @@ export async function createSessionFromTemplate({
       .select("id")
       .single();
 
-      if (sErr) throw new Error(sErr.message);
+    if (sErr) throw new Error(sErr.message);
+    if (!session?.id) throw new Error("Failed to create session (no id returned).");
 
-      const sid = session.id; // sid: string
-      sessionId = sid;        // keep for cleanup
-    
+    const sessionId = session.id;      // <- string (non-null)
+    createdSessionId = sessionId;      // <- keep for cleanup
 
     // 2) Fetch template items (ordered)
     const { data: items, error: tErr } = await supabase
@@ -74,11 +69,10 @@ export async function createSessionFromTemplate({
 
     const templateItems = items ?? [];
     if (templateItems.length === 0) {
-      // Session can exist with no entries; UI can handle empty
       return { sessionId };
     }
 
-    // 3) Insert workout entries
+    // 3) Insert workout entries (session_id is now string)
     const entryRows = templateItems.map((it) => ({
       vault_id: vaultId,
       session_id: sessionId,
@@ -96,7 +90,6 @@ export async function createSessionFromTemplate({
     const insertedEntries = entries ?? [];
     entryIds = insertedEntries.map((e) => e.id);
 
-    // Map order -> entry_id (order should be unique per template)
     const entryIdByOrder = new Map<number, string>();
     for (const e of insertedEntries) entryIdByOrder.set(e.sort_order, e.id);
 
@@ -109,11 +102,7 @@ export async function createSessionFromTemplate({
 
       const n = Math.max(0, (it.target_sets ?? defaultTargetSets) | 0);
       for (let i = 0; i < n; i++) {
-        setRows.push({
-          vault_id: vaultId,
-          entry_id: entryId,
-          set_index: i,
-        });
+        setRows.push({ vault_id: vaultId, entry_id: entryId, set_index: i });
       }
     }
 
@@ -124,18 +113,18 @@ export async function createSessionFromTemplate({
 
     return { sessionId };
   } catch (err) {
-    // Best-effort cleanup to avoid orphaned/partial sessions
+    // Best-effort cleanup
     try {
       if (entryIds.length > 0) {
         await supabase.from("sets").delete().eq("vault_id", vaultId).in("entry_id", entryIds);
         await supabase.from("workout_entries").delete().eq("vault_id", vaultId).in("id", entryIds);
       }
-      if (sessionId) {
+      if (createdSessionId) {
         await supabase
           .from("workout_sessions")
           .delete()
           .eq("vault_id", vaultId)
-          .eq("id", sessionId);
+          .eq("id", createdSessionId);
       }
     } catch {
       // ignore cleanup failures
