@@ -23,6 +23,7 @@ import { Separator } from "@/components/ui/separator";
 
 import SessionLogger from "./SessionLogger";
 import ConfirmSubmitButton from "./ConfirmSubmitButton";
+import VaultNav from "../../_components/VaultNav";
 
 type SetRow = {
   id: string;
@@ -153,6 +154,7 @@ function SessionHeader(props: {
 
   return (
     <Card>
+      <VaultNav vaultId={vaultId} active="home" />
       <CardContent className="pt-6 space-y-4">
         {/* Top row */}
         <div className="flex flex-wrap items-start gap-3">

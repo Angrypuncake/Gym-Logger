@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import CalendarClient from "./CalendarClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import VaultNav from "../_components/VaultNav";
 
 type SummaryRow = {
   session_id: string;
@@ -124,7 +125,9 @@ export default async function SessionsCalendarPage({
   }
 
   return (
+    
     <div className="mx-auto max-w-[1200px] px-4 py-6 space-y-4">
+      <VaultNav vaultId={vaultId} active="home" />
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="text-sm text-muted-foreground">
           Streak: <span className="font-medium text-foreground">{streak}</span> · This week:{" "}

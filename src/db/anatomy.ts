@@ -299,3 +299,70 @@ export async function listExerciseTargets(exerciseId: string): Promise<ExerciseT
       .map((r) => r.anatomical_targets!)
       .sort((a, b) => a.name.localeCompare(b.name));
   }
+
+  // Tendon insights helpers
+
+export async function listTendons(vaultId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("anatomical_targets")
+    .select("id,name,slug,kind")
+    .eq("vault_id", vaultId)
+    .eq("kind", "TENDON")
+    .order("name", { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function listAllTendonExposure(vaultId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("exercise_tendon_exposure")
+    .select("tendon_target_id, exercise_id")
+    .eq("vault_id", vaultId);
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as Array<{ tendon_target_id: string; exercise_id: string }>;
+}
+
+export async function listExercisesForTendon(vaultId: string, tendonTargetId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("exercise_tendon_exposure")
+    .select(
+      `
+      confidence,
+      exercises (
+        id,
+        name,
+        modality,
+        uses_bodyweight,
+        archived_at
+      )
+    `
+    )
+    .eq("vault_id", vaultId)
+    .eq("tendon_target_id", tendonTargetId);
+
+  if (error) throw new Error(error.message);
+
+  const rows = (data ?? []) as Array<{
+    confidence: string;
+    exercises: {
+      id: string;
+      name: string;
+      modality: "REPS" | "ISOMETRIC";
+      uses_bodyweight: boolean;
+      archived_at: string | null;
+    } | null;
+  }>;
+
+  return rows
+    .filter((r) => r.exercises && !r.exercises.archived_at)
+    .map((r) => ({
+      confidence: r.confidence,
+      exercise: r.exercises!,
+    }))
+    .sort((a, b) => a.exercise.name.localeCompare(b.exercise.name));
+}

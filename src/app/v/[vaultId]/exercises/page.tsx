@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ExerciseEditorPanel } from "./ExerciseEditorPanel";
+import VaultNav from "../_components/VaultNav";
 
 export const dynamic = "force-dynamic";
 
@@ -122,19 +123,7 @@ export default async function ExercisesPage({
 
   return (
     <div className="mx-auto max-w-[1000px] px-4 py-6 space-y-6">
-      <header className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <Button asChild variant="secondary" size="sm">
-            <Link href={`/v/${vaultId}`}>← Back</Link>
-          </Button>
-          <h1 className="text-sm font-semibold">Exercises</h1>
-          <div className="text-xs text-muted-foreground">Vault: {vaultId}</div>
-        </div>
-
-        <Button asChild variant="ghost" size="sm">
-          <Link href={`/v/${vaultId}`}>Done</Link>
-        </Button>
-      </header>
+      <VaultNav vaultId={vaultId} active="exercises" />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
         {/* Left: manager */}
