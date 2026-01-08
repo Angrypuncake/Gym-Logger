@@ -7,13 +7,12 @@ import {
   updateBodyweight,
   addSetToEntry,
   deleteUnloggedSetFromForm,
-  setStartNow,
-  setFinishNow,
   clearStartTime,
   clearFinishTime,
-  setStartAtFromForm,
-  setFinishAtFromForm,
+  setStartTimeFromForm,
+  setFinishTimeFromForm,
   removeExerciseFromSession,
+  
 } from "./actions";
 
 import { Button } from "@/components/ui/button";
@@ -37,6 +36,46 @@ type SetRow = {
 
 const APP_TZ = "Australia/Sydney";
 
+/** YYYY-MM-DD in fixed TZ */
+function toDateYmd(valueIso: string, timeZone = APP_TZ) {
+  const d = new Date(valueIso);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(d);
+
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+/** HH:mm in fixed TZ */
+function toTimeLocal(valueIso: string, timeZone = APP_TZ) {
+  const d = new Date(valueIso);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return `${get("hour")}:${get("minute")}`;
+}
+
+function formatCreatedAt(valueIso: string, timeZone = APP_TZ) {
+  return new Intl.DateTimeFormat("en-AU", {
+    timeZone,
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(new Date(valueIso));
+}
+
 /**
  * datetime-local expects: YYYY-MM-DDTHH:mm (no timezone).
  * IMPORTANT: this runs on the server, so use a fixed TZ to avoid UTC shifts.
@@ -55,18 +94,6 @@ function toDatetimeLocal(valueIso: string, timeZone = APP_TZ) {
 
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
-}
-
-function formatCreatedAt(valueIso: string, timeZone = APP_TZ) {
-  return new Intl.DateTimeFormat("en-AU", {
-    timeZone,
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  }).format(new Date(valueIso));
 }
 
 function TimingControlRow(props: {
@@ -128,36 +155,35 @@ function SessionHeader(props: {
   vaultId: string;
   sessionId: string;
   templateName: string;
-  sessionDate: string;
+  sessionDay: string;          // <- fixed day (YYYY-MM-DD)
   createdAt: string | null;
   planned: number;
   completed: number;
   pct: number;
   startSet: boolean;
   endSet: boolean;
-  startValue: string;
-  endValue: string;
+  startTime: string;           // <- HH:mm
+  endTime: string;             // <- HH:mm
 }) {
   const {
     vaultId,
     sessionId,
     templateName,
-    sessionDate,
+    sessionDay,
     createdAt,
     planned,
     completed,
     pct,
     startSet,
     endSet,
-    startValue,
-    endValue,
+    startTime,
+    endTime,
   } = props;
 
   return (
     <Card>
       <VaultNav vaultId={vaultId} active="home" />
       <CardContent className="pt-6 space-y-4">
-        {/* Top row */}
         <div className="flex flex-wrap items-start gap-3">
           <Button asChild variant="secondary" size="sm">
             <Link href={`/v/${vaultId}/sessions`}>← Calendar</Link>
@@ -168,7 +194,7 @@ function SessionHeader(props: {
               Workout: <span className="font-semibold">{templateName}</span>
             </div>
             <div className="text-xs text-muted-foreground">
-              Session {sessionDate}
+              Session {sessionDay}
               {createdAt ? ` · Created ${formatCreatedAt(createdAt)}` : null}
             </div>
           </div>
@@ -183,20 +209,23 @@ function SessionHeader(props: {
           </div>
         </div>
 
-        {/* Progress */}
         <Progress value={pct} />
 
-        {/* Controls under progress */}
         <div className="grid gap-3 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
           {/* Start */}
           <div className="space-y-2">
-            <div className="text-xs font-medium text-muted-foreground">Start time</div>
+            <div className="text-xs font-medium text-muted-foreground">
+              Start time (fixed day: {sessionDay})
+            </div>
             <div className="flex items-center gap-2">
-              <form action={setStartAtFromForm.bind(null, vaultId, sessionId)} className="flex items-center gap-2 flex-1">
+              <form
+                action={setStartTimeFromForm.bind(null, vaultId, sessionId, sessionDay)}
+                className="flex items-center gap-2 flex-1"
+              >
                 <input
-                  name="started_at"
-                  type="datetime-local"
-                  defaultValue={startValue}
+                  name="started_time"
+                  type="time"
+                  defaultValue={startTime}
                   className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
                 <Button type="submit" size="sm" variant="secondary">
@@ -204,31 +233,30 @@ function SessionHeader(props: {
                 </Button>
               </form>
 
-              {!startSet ? (
-                <form action={setStartNow.bind(null, vaultId, sessionId)}>
-                  <Button type="submit" size="sm" variant="secondary">
-                    Now
-                  </Button>
-                </form>
-              ) : (
+              {startSet ? (
                 <form action={clearStartTime.bind(null, vaultId, sessionId)}>
                   <Button type="submit" size="sm" variant="secondary">
                     Clear
                   </Button>
                 </form>
-              )}
+              ) : null}
             </div>
           </div>
 
           {/* End */}
           <div className="space-y-2">
-            <div className="text-xs font-medium text-muted-foreground">End time</div>
+            <div className="text-xs font-medium text-muted-foreground">
+              End time (fixed day: {sessionDay})
+            </div>
             <div className="flex items-center gap-2">
-              <form action={setFinishAtFromForm.bind(null, vaultId, sessionId)} className="flex items-center gap-2 flex-1">
+              <form
+                action={setFinishTimeFromForm.bind(null, vaultId, sessionId, sessionDay)}
+                className="flex items-center gap-2 flex-1"
+              >
                 <input
-                  name="finished_at"
-                  type="datetime-local"
-                  defaultValue={endValue}
+                  name="finished_time"
+                  type="time"
+                  defaultValue={endTime}
                   className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
                 <Button type="submit" size="sm" variant="secondary">
@@ -236,19 +264,13 @@ function SessionHeader(props: {
                 </Button>
               </form>
 
-              {!endSet ? (
-                <form action={setFinishNow.bind(null, vaultId, sessionId)}>
-                  <Button type="submit" size="sm">
-                    Now
-                  </Button>
-                </form>
-              ) : (
+              {endSet ? (
                 <form action={clearFinishTime.bind(null, vaultId, sessionId)}>
                   <Button type="submit" size="sm" variant="secondary">
                     Clear
                   </Button>
                 </form>
-              )}
+              ) : null}
             </div>
           </div>
 
@@ -271,19 +293,13 @@ function SessionHeader(props: {
   );
 }
 
-
-export default async function SessionPage({
-  params,
-}: {
-  params: Promise<{ vaultId: string; sessionId: string }>;
-}) {
+export default async function SessionPage({ params }: { params: Promise<{ vaultId: string; sessionId: string }> }) {
   const { vaultId, sessionId } = await params;
   const supabase = await createClient();
 
   const { data: session, error: sErr } = await supabase
     .from("workout_sessions")
-    .select(
-      `
+    .select(`
       id,
       created_at,
       session_date,
@@ -292,8 +308,7 @@ export default async function SessionPage({
       started_at,
       finished_at,
       template:templates!workout_sessions_template_fk(name)
-    `
-    )
+    `)
     .eq("vault_id", vaultId)
     .eq("id", sessionId)
     .single();
@@ -304,6 +319,14 @@ export default async function SessionPage({
   const templateName =
     (session.template as unknown as { name: string } | null)?.name ?? "Workout";
 
+  // FIXED DAY = created_at (in Australia/Sydney)
+  const sessionDay = session.created_at ? toDateYmd(session.created_at) : (session.session_date as string);
+
+  const startSet = session.started_at !== null;
+  const endSet = session.finished_at !== null;
+
+  const startTime = session.started_at ? toTimeLocal(session.started_at) : "";
+  const endTime = session.finished_at ? toTimeLocal(session.finished_at) : "";
   const { data: entries, error: eErr } = await supabase
     .from("workout_entries")
     .select("id,order, exercise:exercises(id,name,modality,uses_bodyweight)")
@@ -354,8 +377,6 @@ export default async function SessionPage({
 
   if (exErr) return <pre>{exErr.message}</pre>;
 
-  const startSet = session.started_at !== null;
-  const endSet = session.finished_at !== null;
 
   const startValue = session.started_at ? toDatetimeLocal(session.started_at) : "";
   const endValue = session.finished_at ? toDatetimeLocal(session.finished_at) : "";
@@ -366,15 +387,15 @@ export default async function SessionPage({
         vaultId={vaultId}
         sessionId={sessionId}
         templateName={templateName}
-        sessionDate={session.session_date}
+        sessionDay={sessionDay}
         createdAt={session.created_at}
         planned={planned}
         completed={completed}
         pct={pct}
         startSet={startSet}
         endSet={endSet}
-        startValue={startValue}
-        endValue={endValue}
+        startTime={startTime}
+        endTime={endTime}
       />
 
       <SessionLogger
