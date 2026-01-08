@@ -34,7 +34,7 @@ export async function addExistingExercise(
     .select("sort_order")
     .eq("vault_id", vaultId)
     .eq("template_id", templateId)
-    .order("so`rt_order", { ascending: false })
+    .order("sort_order", { ascending: false })
     .limit(1)
     .maybeSingle();
 
