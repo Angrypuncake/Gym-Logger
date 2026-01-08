@@ -27,7 +27,7 @@ export function SelectedSetPanel({
   setShowTotalLoad: (v: boolean) => void;
   onClearSelection: () => void;
   saveSetAction?: FnForm; // expects: set_id, reps/weight_kg/duration_sec (blank = keep existing)
-  deleteUnloggedSetAction?: (setId: string) => Promise<void>;
+  deleteUnloggedSetAction?: FnForm;
 }) {
   const [weightStr, setWeightStr] = React.useState("");
   const [repsStr, setRepsStr] = React.useState("");

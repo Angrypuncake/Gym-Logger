@@ -5,7 +5,7 @@ import type { MuscleWeeklyRow, TendonWeeklyRow } from "@/db/analytics";
 import AnalyticsHeader from "./AnalyticsHeader";
 import TargetListCard, { TargetAgg } from "./TargetListCard";
 import WeeklyDetailsCard, { WeekAgg } from "./WeeklyDetailsCard";
-import { buildHref, roleWeight } from "./AnalyticsUtils";
+import { buildHref, roleWeight, Tab } from "./AnalyticsUtils";
 
 
 export default function AnalyticsClient(props: {

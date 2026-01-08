@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import type { EntryRow, ExercisePick, FnForm } from "./_components/types";
+import type { EntryRow, ExercisePick, FnEntryId, FnForm } from "./_components/types";
 
 import { SelectedSetPanel } from "./_components/SelectedSetPanel";
 import { AddExercisePanel } from "./_components/AddExercisePanel";
@@ -25,10 +25,10 @@ export default function SessionLogger({
 
   updateBodyweightAction?: FnForm;
   addExerciseAction?: FnForm;
-  addSetAction?: (entryId: string) => void | Promise<void>;
-  deleteUnloggedSetAction?: (setId: string) => Promise<void>;
+  addSetAction?: FnEntryId;
+  deleteUnloggedSetAction?: FnForm;
   saveSetAction?: FnForm; // expects: set_id + fields (blank = keep existing)
-  removeEntryAction?: (entryId: string) => void | Promise<void>;
+  removeEntryAction?: FnEntryId;
 }) {
   const [showTotalLoad, setShowTotalLoad] = React.useState(false);
   const [selected, setSelected] = React.useState<{ entryId: string; setId: string } | null>(null);

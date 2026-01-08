@@ -1,7 +1,7 @@
 // src/app/v/[vaultId]/analytics/_components/WeeklyDetailsCard.tsx
 "use client";
 
-import { formatKg, formatNumber } from "./AnalyticsUtils";
+import { formatKg, formatNumber, Tab } from "./AnalyticsUtils";
 
 
 

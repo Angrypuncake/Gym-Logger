@@ -55,20 +55,21 @@ export default async function SessionsCalendarPage({
 
   const supabase = await createClient();
 
-  const { data: summariesRaw, error } = await supabase
-    .from("session_summaries" as any)
-    .select("*")
-    .eq("vault_id", vaultId)
-    .gte("session_date", monthStartKey(y, m))
-    .lte("session_date", monthEndKey(y, m))
-    .order("session_date", { ascending: true })
-    // started_at can be null; keep it secondary
-    .order("started_at", { ascending: true });
-    // If your view has created_at, prefer:
-    // .order("created_at", { ascending: true });
+  //  untyped query for a view not present in Database types
+const { data: summariesRaw, error } = await (supabase as any)
+  .from("session_summaries")
+  .select("*")
+  .eq("vault_id", vaultId)
+  .gte("session_date", monthStartKey(y, m))
+  .lte("session_date", monthEndKey(y, m))
+  .order("session_date", { ascending: true })
+  .order("started_at", { ascending: true });
 
-  if (error) return <pre>{error.message}</pre>;
-  const summaries = (summariesRaw ?? []) as SummaryRow[];
+if (error) return <pre>{error.message}</pre>;
+
+//  cast from unknown, not direct
+const summaries: SummaryRow[] = (summariesRaw ?? []) as unknown as SummaryRow[];
+
 
   const { data: templates, error: tErr } = await supabase
     .from("templates")
@@ -88,9 +89,9 @@ export default async function SessionsCalendarPage({
   const since = new Date(now);
   since.setUTCDate(now.getUTCDate() - 180);
 
-  const { data: adherenceRaw } = await supabase
-    .from("session_summaries" as any)
-    .select("session_date,logged_sets") // finished_at no longer used for adherence
+  const { data: adherenceRaw } = await (supabase as any)
+    .from("session_summaries")
+    .select("session_date,logged_sets")
     .eq("vault_id", vaultId)
     .gte("session_date", sydneyKey(since))
     .lte("session_date", sydneyKey(now));

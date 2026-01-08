@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { formatKg, formatNumber } from "./AnalyticsUtils";
+import { formatKg, formatNumber, Tab } from "./AnalyticsUtils";
 
 
 export type TargetAgg = {

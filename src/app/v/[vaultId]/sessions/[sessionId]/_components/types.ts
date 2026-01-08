@@ -20,3 +20,6 @@ export type EntryRow = {
 export type ExercisePick = { id: string; name: string; modality: Modality };
 
 export type FnForm = (formData: FormData) => void | Promise<void>;
+
+export type FnId = (id: string) => Promise<void>;
+export type FnEntryId = (entryId: string) => Promise<void>;

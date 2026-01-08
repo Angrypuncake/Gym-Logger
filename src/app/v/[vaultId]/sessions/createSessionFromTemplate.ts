@@ -56,8 +56,11 @@ export async function createSessionFromTemplate({
       .select("id")
       .single();
 
-    if (sErr) throw new Error(sErr.message);
-    sessionId = session.id;
+      if (sErr) throw new Error(sErr.message);
+
+      const sid = session.id; // sid: string
+      sessionId = sid;        // keep for cleanup
+    
 
     // 2) Fetch template items (ordered)
     const { data: items, error: tErr } = await supabase
@@ -78,7 +81,7 @@ export async function createSessionFromTemplate({
     // 3) Insert workout entries
     const entryRows = templateItems.map((it) => ({
       vault_id: vaultId,
-      session_id: sessionId,
+      session_id: sid,          
       exercise_id: it.exercise_id,
       order: it.order,
     }));
