@@ -131,7 +131,7 @@ export default async function TemplateEditorPage({
                             <Badge variant="destructive">Missing</Badge>
                           )}
                         </div>
-                        <div className="text-xs text-muted-foreground">Item order: {it.order}</div>
+                        <div className="text-xs text-muted-foreground">Item order: {it.sort_order}</div>
                       </div>
 
                       <div className="flex flex-wrap items-center justify-end gap-2">

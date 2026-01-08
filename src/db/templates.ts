@@ -4,9 +4,9 @@ export async function listTemplates(vaultId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("templates")
-    .select("id,name,order")
+    .select("id,name,sort_order")
     .eq("vault_id", vaultId)
-    .order("order", { ascending: true });
+    .order("sort_order", { ascending: true });
 
   if (error) throw new Error(error.message);
   return data ?? [];
@@ -18,10 +18,10 @@ export async function listTemplateItemPreviews(vaultId: string, templateIds: str
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("template_items")
-    .select("template_id,order,exercise:exercises(name)")
+    .select("template_id,sort_order,exercise:exercises(name)")
     .eq("vault_id", vaultId)
     .in("template_id", templateIds)
-    .order("order", { ascending: true });
+    .order("sort_order", { ascending: true });
 
   if (error) throw new Error(error.message);
 

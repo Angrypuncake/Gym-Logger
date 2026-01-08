@@ -12,7 +12,7 @@ export type SetRow = {
 
 export type EntryRow = {
   id: string;
-  order: number;
+  sort_order: number;
   exercise: { id: string; name: string; modality: Modality; uses_bodyweight: boolean };
   sets: SetRow[];
 };
