@@ -15,13 +15,17 @@ export function ExercisesPanel({
   onSelect,
   addSetAction,
   removeEntryAction,
+  bodyWeightKg,
 }: {
   entries: EntryRow[];
   selected: { entryId: string; setId: string } | null;
   onSelect: (entryId: string, setId: string) => void;
   addSetAction?: (entryId: string) => Promise<void>;
   removeEntryAction?: (entryId: string) => Promise<void>;
+  bodyWeightKg: number | null;
 }) {
+
+  
   
   return (
     <Card>
@@ -97,7 +101,10 @@ export function ExercisesPanel({
                 {entry.sets.map((s) => {
                   const logged = isSetLogged(s);
                   const isSelected = selected?.setId === s.id;
-                  const { top, sub } = fmtSetLabel(ex.modality, s);
+                  const { top, sub } = fmtSetLabel(ex.modality, s, {
+                    usesBodyweight: ex.uses_bodyweight,
+                    bodyWeightKg,
+                  });
 
                   return (
                     <button

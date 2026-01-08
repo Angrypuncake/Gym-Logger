@@ -52,7 +52,7 @@ export default function SessionLogger({
   saveSetAction?: FnForm; // expects: set_id + fields (blank = keep existing)
   removeEntryAction?: FnEntryId;
 }) {
-  const [showTotalLoad, setShowTotalLoad] = React.useState(false);
+
   const [selected, setSelected] = React.useState<{ entryId: string; setId: string } | null>(null);
 
   const isMobile = useMediaQuery("(max-width: 1023px)"); // < lg
@@ -73,7 +73,6 @@ export default function SessionLogger({
   }, [selected, entries]);
 
   const mobileEditorOpen = isMobile && !!selectedSet;
-
   return (
     <div className="grid gap-4 lg:grid-cols-[1.2fr_.9fr] items-start">
       <ExercisesPanel
@@ -82,16 +81,14 @@ export default function SessionLogger({
         onSelect={(entryId, setId) => setSelected({ entryId, setId })}
         addSetAction={addSetAction}
         removeEntryAction={removeEntryAction}
+        bodyWeightKg={bodyWeightKg} // add (for set-block totals)
       />
 
-      {/* Desktop editor column only */}
       <div className="hidden lg:block self-start lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] overflow-auto">
         <SelectedSetPanel
           selectedSet={selectedSet}
           bodyWeightKg={bodyWeightKg}
           updateBodyweightAction={updateBodyweightAction}
-          showTotalLoad={showTotalLoad}
-          setShowTotalLoad={setShowTotalLoad}
           onClearSelection={() => setSelected(null)}
           saveSetAction={saveSetAction}
           deleteUnloggedSetAction={deleteUnloggedSetAction}
@@ -102,14 +99,11 @@ export default function SessionLogger({
         <AddExercisePanel allExercises={allExercises} addExerciseAction={addExerciseAction} />
       </div>
 
-      {/* Mobile bottom-sheet editor */}
       <MobileSetSheet open={mobileEditorOpen} onClose={() => setSelected(null)}>
         <SelectedSetPanel
           selectedSet={selectedSet}
           bodyWeightKg={bodyWeightKg}
           updateBodyweightAction={updateBodyweightAction}
-          showTotalLoad={showTotalLoad}
-          setShowTotalLoad={setShowTotalLoad}
           onClearSelection={() => setSelected(null)}
           saveSetAction={saveSetAction}
           deleteUnloggedSetAction={deleteUnloggedSetAction}

@@ -14,19 +14,15 @@ export function SelectedSetPanel({
   selectedSet,
   bodyWeightKg,
   updateBodyweightAction,
-  showTotalLoad,
-  setShowTotalLoad,
   onClearSelection,
   saveSetAction,
   deleteUnloggedSetAction,
 }: {
   selectedSet: SelectedSet;
   bodyWeightKg: number | null;
-  updateBodyweightAction?: FnForm; // expects: body_weight_kg
-  showTotalLoad: boolean;
-  setShowTotalLoad: (v: boolean) => void;
+  updateBodyweightAction?: FnForm;
   onClearSelection: () => void;
-  saveSetAction?: FnForm; // expects: set_id, reps/weight_kg/duration_sec (blank = keep existing)
+  saveSetAction?: FnForm;
   deleteUnloggedSetAction?: FnForm;
 }) {
   const [weightStr, setWeightStr] = React.useState("");
@@ -56,13 +52,13 @@ export function SelectedSetPanel({
   const totalLoad = React.useMemo(() => {
     if (!selectedSet) return null;
     const ex = selectedSet.entry.exercise;
-    if (!showTotalLoad) return null;
     if (!ex.uses_bodyweight) return null;
     if (bodyWeightKg == null) return null;
 
-    // For ISOMETRIC, weightStr is "", so external = 0.
-    return bodyWeightKg + safeNumber(weightStr);
-  }, [selectedSet, showTotalLoad, bodyWeightKg, weightStr]);
+    // REPS: external from input; ISOMETRIC: external is 0 (weightStr is "")
+    const external = safeNumber(weightStr);
+    return bodyWeightKg + external;
+  }, [selectedSet, bodyWeightKg, weightStr]);
 
   const logged = selectedSet ? isSetLogged(selectedSet.set) : false;
   const canDelete = !!selectedSet && !logged && !!deleteUnloggedSetAction;
@@ -218,44 +214,6 @@ export function SelectedSetPanel({
             </div>
           </form>
         )}
-
-        {/* Session settings moved here to reduce right-column clutter */}
-        <Separator />
-
-        <details className="rounded-md border border-border bg-muted/5 px-3 py-2">
-          <summary className="cursor-pointer select-none text-sm font-medium">
-            Session settings
-          </summary>
-
-          <div className="mt-3 space-y-3">
-            <form action={updateBodyweightAction} className="flex items-center gap-2">
-              <div className="w-24 shrink-0 text-xs text-muted-foreground">Bodyweight</div>
-              <input
-                name="body_weight_kg"
-                inputMode="decimal"
-                placeholder="kg"
-                defaultValue={bodyWeightKg ?? ""}
-                className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                disabled={!updateBodyweightAction}
-              />
-              <Button type="submit" variant="secondary" size="sm" disabled={!updateBodyweightAction}>
-                Save
-              </Button>
-            </form>
-
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="h-4 w-4"
-                checked={showTotalLoad}
-                onChange={(e) => setShowTotalLoad(e.target.checked)}
-              />
-              <span>Show total load (BW + external) for BW exercises</span>
-            </label>
-
-            <div className="text-xs text-muted-foreground">Totals are informational.</div>
-          </div>
-        </details>
       </CardContent>
     </Card>
   );

@@ -16,14 +16,11 @@ import {
 } from "./actions";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+
 
 import SessionLogger from "./SessionLogger";
-import ConfirmSubmitButton from "./ConfirmSubmitButton";
-import VaultNav from "../../_components/VaultNav";
+import { SessionHeader } from "./_components/SessionHeader";
+
 
 type SetRow = {
   id: string;
@@ -64,17 +61,6 @@ function toTimeLocal(valueIso: string, timeZone = APP_TZ) {
   return `${get("hour")}:${get("minute")}`;
 }
 
-function formatCreatedAt(valueIso: string, timeZone = APP_TZ) {
-  return new Intl.DateTimeFormat("en-AU", {
-    timeZone,
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  }).format(new Date(valueIso));
-}
 
 /**
  * datetime-local expects: YYYY-MM-DDTHH:mm (no timezone).
@@ -151,147 +137,6 @@ function TimingControlRow(props: {
   );
 }
 
-function SessionHeader(props: {
-  vaultId: string;
-  sessionId: string;
-  templateName: string;
-  sessionDay: string;          // <- fixed day (YYYY-MM-DD)
-  createdAt: string | null;
-  planned: number;
-  completed: number;
-  pct: number;
-  startSet: boolean;
-  endSet: boolean;
-  startTime: string;           // <- HH:mm
-  endTime: string;             // <- HH:mm
-}) {
-  const {
-    vaultId,
-    sessionId,
-    templateName,
-    sessionDay,
-    createdAt,
-    planned,
-    completed,
-    pct,
-    startSet,
-    endSet,
-    startTime,
-    endTime,
-  } = props;
-
-  return (
-    <Card>
-      <VaultNav vaultId={vaultId} active="home" />
-      <CardContent className="pt-6 space-y-4">
-        <div className="flex flex-wrap items-start gap-3">
-          <Button asChild variant="secondary" size="sm">
-            <Link href={`/v/${vaultId}/sessions`}>← Calendar</Link>
-          </Button>
-
-          <div className="min-w-0">
-            <div className="text-sm font-semibold truncate">
-              Workout: <span className="font-semibold">{templateName}</span>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Session {sessionDay}
-              {createdAt ? ` · Created ${formatCreatedAt(createdAt)}` : null}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 ml-auto">
-            <Badge variant="outline">
-              {completed}/{planned}
-            </Badge>
-            <Badge variant="secondary">{pct}%</Badge>
-            <Badge variant="outline">{startSet ? "Start set" : "No start"}</Badge>
-            <Badge variant="outline">{endSet ? "End set" : "No end"}</Badge>
-          </div>
-        </div>
-
-        <Progress value={pct} />
-
-        <div className="grid gap-3 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
-          {/* Start */}
-          <div className="space-y-2">
-            <div className="text-xs font-medium text-muted-foreground">
-              Start time (fixed day: {sessionDay})
-            </div>
-            <div className="flex items-center gap-2">
-              <form
-                action={setStartTimeFromForm.bind(null, vaultId, sessionId, sessionDay)}
-                className="flex items-center gap-2 flex-1"
-              >
-                <input
-                  name="started_time"
-                  type="time"
-                  defaultValue={startTime}
-                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-                <Button type="submit" size="sm" variant="secondary">
-                  Save
-                </Button>
-              </form>
-
-              {startSet ? (
-                <form action={clearStartTime.bind(null, vaultId, sessionId)}>
-                  <Button type="submit" size="sm" variant="secondary">
-                    Clear
-                  </Button>
-                </form>
-              ) : null}
-            </div>
-          </div>
-
-          {/* End */}
-          <div className="space-y-2">
-            <div className="text-xs font-medium text-muted-foreground">
-              End time (fixed day: {sessionDay})
-            </div>
-            <div className="flex items-center gap-2">
-              <form
-                action={setFinishTimeFromForm.bind(null, vaultId, sessionId, sessionDay)}
-                className="flex items-center gap-2 flex-1"
-              >
-                <input
-                  name="finished_time"
-                  type="time"
-                  defaultValue={endTime}
-                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-                <Button type="submit" size="sm" variant="secondary">
-                  Save
-                </Button>
-              </form>
-
-              {endSet ? (
-                <form action={clearFinishTime.bind(null, vaultId, sessionId)}>
-                  <Button type="submit" size="sm" variant="secondary">
-                    Clear
-                  </Button>
-                </form>
-              ) : null}
-            </div>
-          </div>
-
-          {/* Danger */}
-          <div className="space-y-2">
-            <div className="text-xs font-medium text-muted-foreground">Danger</div>
-            <form action={discardWorkout.bind(null, vaultId, sessionId)} className="flex">
-              <ConfirmSubmitButton
-                variant="destructive"
-                size="sm"
-                confirmText="Discard this session? This deletes the session and all entries/sets."
-              >
-                Discard
-              </ConfirmSubmitButton>
-            </form>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 export default async function SessionPage({ params }: { params: Promise<{ vaultId: string; sessionId: string }> }) {
   const { vaultId, sessionId } = await params;
@@ -377,10 +222,6 @@ export default async function SessionPage({ params }: { params: Promise<{ vaultI
 
   if (exErr) return <pre>{exErr.message}</pre>;
 
-
-  const startValue = session.started_at ? toDatetimeLocal(session.started_at) : "";
-  const endValue = session.finished_at ? toDatetimeLocal(session.finished_at) : "";
-
   return (
     <div className="mx-auto max-w-[980px] px-4 py-6 space-y-4">
       <SessionHeader
@@ -396,6 +237,8 @@ export default async function SessionPage({ params }: { params: Promise<{ vaultI
         endSet={endSet}
         startTime={startTime}
         endTime={endTime}
+        bodyWeightKg={session.body_weight_kg as number | null}
+        updateBodyweightAction={updateBodyweight.bind(null, vaultId, sessionId)}
       />
 
       <SessionLogger
