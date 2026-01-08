@@ -12,6 +12,7 @@ export function DayCell({
   selected,
   isToday,
   isFuture,
+  compact,
   onOpen,
 }: {
   day: Date;
@@ -20,6 +21,7 @@ export function DayCell({
   selected: boolean;
   isToday: boolean;
   isFuture: boolean;
+  compact: boolean;
   onOpen: () => void;
 }) {
   const dayNum = day.getDate();
@@ -27,10 +29,11 @@ export function DayCell({
 
   const shown = [...sessions]
     .sort((a, b) => a.template_name.localeCompare(b.template_name))
-    .slice(0, 3);
+    .slice(0, compact ? 1 : 3);
 
   const base = [
-    "rounded-xl border p-2 text-left min-h-[92px]",
+    "rounded-xl border p-2 text-left",
+    compact ? "min-h-[64px]" : "min-h-[92px]",
     "transition-colors transition-shadow duration-150",
   ];
 
@@ -58,12 +61,12 @@ export function DayCell({
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold text-foreground">{dayNum}</div>
         <div className="flex items-center gap-2">
-          {isToday && <span className="text-[10px] text-muted-foreground">Today</span>}
+        {!compact && isToday && <span className="text-[10px] text-muted-foreground">Today</span>}
           {hasAnyPr && <Badge variant="secondary">PR</Badge>}
         </div>
       </div>
 
-      <div className="mt-2 space-y-1">
+      <div className={["mt-2 space-y-1", compact ? "hidden" : ""].join(" ")}>
         {shown.map((s) => {
           const pct = pctDone(s);
           const chip = `${s.template_name} · ${pct}%`;
@@ -87,6 +90,13 @@ export function DayCell({
           <div className="text-xs text-muted-foreground">+{sessions.length - 3} more</div>
         )}
       </div>
+
+      {compact && sessions.length > 0 && (
+        <div className="mt-2 text-xs text-muted-foreground truncate">
+          {sessions.length} session{sessions.length === 1 ? "" : "s"}
+          {hasAnyPr ? " · PR" : ""}
+        </div>
+      )}
     </button>
   );
 }

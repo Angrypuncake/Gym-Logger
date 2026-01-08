@@ -39,11 +39,42 @@ export default function CalendarClient({
   const openDaySessions = openDay ? filteredByDay.get(openDay) ?? [] : [];
   const openDayIsFuture = openDay ? openDay > todayKey : false;
 
+const [compact, setCompact] = React.useState(false);
+React.useEffect(() => {
+    try {
+      const v = localStorage.getItem("gymlogger.calendar.compact");
+      if (v === "1") setCompact(true);
+    } catch {}
+  }, []);
+
+ function toggleCompact() {
+    setCompact((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem("gymlogger.calendar.compact", next ? "1" : "0");
+      } catch {}
+      return next;
+    });
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+     <div className="sticky top-0 z-10 -mx-4 px-4 py-2 bg-background/90 backdrop-blur border-b">
+        <div className="flex items-center justify-between gap-3">
         <MonthNav vaultId={vaultId} year={year} month0={month0} />
-        <CalendarFilters templates={templates} filters={filters} setFilters={setFilters} />
+        <div className="flex items-center gap-2 justify-end flex-wrap">
+          <button
+            type="button"
+            onClick={toggleCompact}
+            className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+            aria-pressed={compact}
+            title="Toggle compact calendar"
+          >
+            {compact ? "Compact: On" : "Compact: Off"}
+          </button>
+         <CalendarFilters templates={templates} filters={filters} setFilters={setFilters} />
+        </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-7 gap-2 text-xs text-muted-foreground">
@@ -73,6 +104,7 @@ export default function CalendarClient({
               selected={selected}
               isToday={isToday}
               isFuture={isFuture}
+              compact={compact}
               onOpen={() => setOpenDay(dayKey)}
             />
           );
