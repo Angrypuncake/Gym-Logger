@@ -189,6 +189,62 @@ export async function saveSet(vaultId: string, sessionId: string, formData: Form
   revalidatePath(`/v/${vaultId}/sessions/${sessionId}`);
 }
 
+export async function removeExerciseFromSession(
+  vaultId: string,
+  sessionId: string,
+  entryId: string
+) {
+  const supabase = await createClient();
+
+  // Ensure entry belongs to this session
+  const { data: entry, error: eErr } = await supabase
+    .from("workout_entries")
+    .select("id")
+    .eq("vault_id", vaultId)
+    .eq("session_id", sessionId)
+    .eq("id", entryId)
+    .single();
+
+  if (eErr) throw new Error(eErr.message);
+  if (!entry) throw new Error("Entry not found for this session.");
+
+  // Safety: block deletion if any set is logged
+  const { data: sets, error: sErr } = await supabase
+    .from("sets")
+    .select("id,reps,weight_kg,duration_sec")
+    .eq("vault_id", vaultId)
+    .eq("entry_id", entryId);
+
+  if (sErr) throw new Error(sErr.message);
+
+  const hasLogged = (sets ?? []).some(
+    (s) => s.reps !== null || s.weight_kg !== null || s.duration_sec !== null
+  );
+  if (hasLogged) {
+    throw new Error("Cannot remove an exercise that has logged sets. Clear those sets first.");
+  }
+
+  // Delete sets then entry
+  const { error: delSetsErr } = await supabase
+    .from("sets")
+    .delete()
+    .eq("vault_id", vaultId)
+    .eq("entry_id", entryId);
+
+  if (delSetsErr) throw new Error(delSetsErr.message);
+
+  const { error: delEntryErr } = await supabase
+    .from("workout_entries")
+    .delete()
+    .eq("vault_id", vaultId)
+    .eq("id", entryId);
+
+  if (delEntryErr) throw new Error(delEntryErr.message);
+
+  revalidatePath(`/v/${vaultId}/sessions/${sessionId}`);
+  revalidatePath(`/v/${vaultId}/sessions`);
+  revalidatePath(`/v/${vaultId}`);
+}
 
 
 export async function addExerciseToSession(vaultId: string, sessionId: string, formData: FormData) {
@@ -413,18 +469,6 @@ export async function discardWorkout(vaultId: string, sessionId: string) {
   redirect(`/v/${vaultId}`);
 }
 
-async function getSessionFinishedAt(vaultId: string, sessionId: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("workout_sessions")
-    .select("finished_at")
-    .eq("vault_id", vaultId)
-    .eq("id", sessionId)
-    .single();
-
-  if (error) throw new Error(error.message);
-  return data?.finished_at ?? null;
-}
 
 async function getSessionTimes(supabase: any, vaultId: string, sessionId: string) {
   const { data, error } = await supabase

@@ -7,18 +7,22 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { EntryRow, FnForm } from "./types";
 import { fmtSetLabel, isSetLogged } from "./utils";
+import ConfirmSubmitButton from "../ConfirmSubmitButton";
 
 export function ExercisesPanel({
   entries,
   selected,
   onSelect,
   addSetAction,
+  removeEntryAction,
 }: {
   entries: EntryRow[];
   selected: { entryId: string; setId: string } | null;
   onSelect: (entryId: string, setId: string) => void;
   addSetAction?: (entryId: string) => Promise<void>;
+  removeEntryAction?: (entryId: string) => Promise<void>;
 }) {
+  
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -33,6 +37,7 @@ export function ExercisesPanel({
           const ex = entry.exercise;
           const total = entry.sets.length;
           const done = entry.sets.filter(isSetLogged).length;
+          const canRemove = done === 0 && !!removeEntryAction;
 
           return (
             <div key={entry.id} className="rounded-lg border border-border bg-muted/10 p-3">
@@ -49,21 +54,37 @@ export function ExercisesPanel({
                 </div>
 
                 <div className="flex items-center gap-2">
-                {addSetAction ? (
-                    <form action={addSetAction.bind(null, entry.id)} className="contents">
-                    <Button type="submit" size="sm" variant="secondary">
-                        + Set
-                    </Button>
-                    </form>
-                ) : (
-                    <Button size="sm" variant="secondary" disabled>
+              {addSetAction ? (
+                <form action={addSetAction.bind(null, entry.id)} className="contents">
+                  <Button type="submit" size="sm" variant="secondary">
                     + Set
-                    </Button>
-                )}
+                  </Button>
+                </form>
+              ) : (
+                <Button size="sm" variant="secondary" disabled>
+                  + Set
+                </Button>
+              )}
 
-                <Badge variant="secondary">{total} sets</Badge>
-                </div>
+              {removeEntryAction ? (
+                <form action={removeEntryAction.bind(null, entry.id)} className="contents">
+                  <ConfirmSubmitButton
+                    type="submit"
+                    size="sm"
+                    variant="destructive"
+                    disabled={!canRemove}
+                    confirmText={`Remove "${ex.name}" from this session? (Only allowed if no sets are logged.)`}
+                  >
+                    Remove
+                  </ConfirmSubmitButton>
+                </form>
+              ) : null}
 
+              <Badge variant="secondary">{total} sets</Badge>
+            </div>
+
+
+                
 
                 
               </div>

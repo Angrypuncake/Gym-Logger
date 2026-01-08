@@ -18,6 +18,7 @@ export default function SessionLogger({
   addSetAction,
   deleteUnloggedSetAction,
   saveSetAction,
+  removeEntryAction,
 }: {
   entries: EntryRow[];
   allExercises: ExercisePick[];
@@ -28,6 +29,7 @@ export default function SessionLogger({
   addSetAction?: (entryId: string) => void | Promise<void>;
   deleteUnloggedSetAction?: (setId: string) => Promise<void>;
   saveSetAction?: FnForm; // expects: set_id + fields (blank = keep existing)
+  removeEntryAction?: (entryId: string) => void | Promise<void>;
 }) {
   const [showTotalLoad, setShowTotalLoad] = React.useState(false);
   const [selected, setSelected] = React.useState<{ entryId: string; setId: string } | null>(null);
@@ -54,6 +56,7 @@ export default function SessionLogger({
         selected={selected}
         onSelect={(entryId, setId) => setSelected({ entryId, setId })}
         addSetAction={addSetAction}
+        removeEntryAction={removeEntryAction}
         
         
       />

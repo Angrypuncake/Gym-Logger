@@ -13,6 +13,7 @@ import {
   clearFinishTime,
   setStartAtFromForm,
   setFinishAtFromForm,
+  removeExerciseFromSession,
 } from "./actions";
 
 import { Button } from "@/components/ui/button";
@@ -385,6 +386,7 @@ export default async function SessionPage({
         addExerciseAction={addExerciseToSession.bind(null, vaultId, sessionId)}
         addSetAction={addSetToEntry.bind(null, vaultId, sessionId)}
         deleteUnloggedSetAction={deleteUnloggedSetFromForm.bind(null, vaultId, sessionId)}
+        removeEntryAction={removeExerciseFromSession.bind(null, vaultId, sessionId)}
       />
     </div>
   );
