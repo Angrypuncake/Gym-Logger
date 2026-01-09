@@ -12,7 +12,6 @@ type SelectedSet = { entry: EntryRow; set: SetRow } | null;
 export function SelectedSetPanel({
   selectedSet,
   bodyWeightKg,
-  updateBodyweightAction,
   onClearSelection,
   saveSetAction,
   deleteUnloggedSetAction,

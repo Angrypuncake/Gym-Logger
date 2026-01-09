@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import SetBlocksControl from "./SetBlocksControl";
 import { ExercisePicker } from "../../exercises/ExercisePicker";
-import { getTemplateEditorData } from "@/db/templates";
+import { getTemplateEditorData } from "@/db/templates/index";
 
 type ItemRow = {
   id: string;

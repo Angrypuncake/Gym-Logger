@@ -13,20 +13,7 @@ import Link from "next/link";
 import type { FnForm } from "./types";
 
 import { clearFinishTimeAction, clearStartTimeAction, discardWorkoutAction, setFinishTimeFromFormAction, setStartTimeFromFormAction } from "../actions";
-
-const APP_TZ = "Australia/Sydney";
-
-function formatCreatedAt(valueIso: string, timeZone = APP_TZ) {
-  return new Intl.DateTimeFormat("en-AU", {
-    timeZone,
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  }).format(new Date(valueIso));
-}
+import { formatCreatedAt } from "@/lib/utils";
 
 export function SessionHeader(props: {
   vaultId: string;

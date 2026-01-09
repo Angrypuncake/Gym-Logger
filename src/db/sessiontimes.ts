@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { APP_TZ } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 
 async function updateSessionTimes(
@@ -87,7 +88,6 @@ export async function setFinishAtFromForm(
 }
 
 
-const APP_TZ = "Australia/Sydney";
 
 function partsFromTz(date: Date, timeZone: string) {
   const parts = new Intl.DateTimeFormat("en-US", {

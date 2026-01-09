@@ -1,4 +1,3 @@
-// src/app/v/[vaultId]/sessions/createSessionFromTemplate.ts
 import { createClient } from "@/lib/supabase/server";
 
 type CreateSessionFromTemplateParams = {
@@ -14,7 +13,7 @@ type CreateSessionFromTemplateParams = {
   defaultTargetSets?: number;
 };
 
-export async function createSessionFromTemplate({
+export async function createSessionFromTemplateDb({
   vaultId,
   templateId,
   sessionDate,
@@ -28,12 +27,10 @@ export async function createSessionFromTemplate({
 }: CreateSessionFromTemplateParams): Promise<{ sessionId: string }> {
   const supabase = await createClient();
 
-  // only for cleanup
   let createdSessionId: string | null = null;
   let entryIds: string[] = [];
 
   try {
-    // 1) Create session
     const { data: session, error: sErr } = await supabase
       .from("workout_sessions")
       .insert({
@@ -54,10 +51,9 @@ export async function createSessionFromTemplate({
     if (sErr) throw new Error(sErr.message);
     if (!session?.id) throw new Error("Failed to create session (no id returned).");
 
-    const sessionId = session.id;      // <- string (non-null)
-    createdSessionId = sessionId;      // <- keep for cleanup
+    const sessionId = session.id;
+    createdSessionId = sessionId;
 
-    // 2) Fetch template items (ordered)
     const { data: items, error: tErr } = await supabase
       .from("template_items")
       .select("exercise_id, sort_order, target_sets")
@@ -68,11 +64,8 @@ export async function createSessionFromTemplate({
     if (tErr) throw new Error(tErr.message);
 
     const templateItems = items ?? [];
-    if (templateItems.length === 0) {
-      return { sessionId };
-    }
+    if (templateItems.length === 0) return { sessionId };
 
-    // 3) Insert workout entries (session_id is now string)
     const entryRows = templateItems.map((it) => ({
       vault_id: vaultId,
       session_id: sessionId,
@@ -93,7 +86,7 @@ export async function createSessionFromTemplate({
     const entryIdByOrder = new Map<number, string>();
     for (const e of insertedEntries) entryIdByOrder.set(e.sort_order, e.id);
 
-    // 4) Seed planned sets
+    // IMPORTANT: your other code uses 1-based set_index. Seed 1..n, not 0..n-1.
     const setRows: Array<{ vault_id: string; entry_id: string; set_index: number }> = [];
 
     for (const it of templateItems) {
@@ -102,7 +95,7 @@ export async function createSessionFromTemplate({
 
       const n = Math.max(0, (it.target_sets ?? defaultTargetSets) | 0);
       for (let i = 0; i < n; i++) {
-        setRows.push({ vault_id: vaultId, entry_id: entryId, set_index: i });
+        setRows.push({ vault_id: vaultId, entry_id: entryId, set_index: i + 1 });
       }
     }
 
@@ -113,18 +106,14 @@ export async function createSessionFromTemplate({
 
     return { sessionId };
   } catch (err) {
-    // Best-effort cleanup
+    // best-effort cleanup
     try {
       if (entryIds.length > 0) {
         await supabase.from("sets").delete().eq("vault_id", vaultId).in("entry_id", entryIds);
         await supabase.from("workout_entries").delete().eq("vault_id", vaultId).in("id", entryIds);
       }
       if (createdSessionId) {
-        await supabase
-          .from("workout_sessions")
-          .delete()
-          .eq("vault_id", vaultId)
-          .eq("id", createdSessionId);
+        await supabase.from("workout_sessions").delete().eq("vault_id", vaultId).eq("id", createdSessionId);
       }
     } catch {
       // ignore cleanup failures

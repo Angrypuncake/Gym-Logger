@@ -1,9 +1,10 @@
 // src/app/v/[vaultId]/sessions/actions.ts
 "use server";
 
+import { createSessionFromTemplateDb } from "@/db/sessions";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createSessionFromTemplate } from "./createSessionFromTemplate";
+
 
 function asString(v: FormDataEntryValue | null) {
   if (v === null) return "";
@@ -27,7 +28,7 @@ export async function createSessionAction(vaultId: string, formData: FormData) {
   if (!templateId) throw new Error("template_id required");
   if (!sessionDate) throw new Error("session_date required");
 
-  const { sessionId } = await createSessionFromTemplate({
+  const { sessionId } = await createSessionFromTemplateDb({
     vaultId,
     templateId,
     sessionDate,

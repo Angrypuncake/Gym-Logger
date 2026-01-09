@@ -9,7 +9,12 @@ import {
 } from "@/db/exercises";
 import type { Enums } from "@/types/supabase";
 import { revalidatePath } from "next/cache";
-import { listAnatomicalTargets, listExerciseTargets, setExerciseTargets } from "@/db/anatomy";
+import { setExerciseTargets } from "@/db/anatomy";
+
+function revalidateExercise(vaultId: string) {
+  revalidatePath(`/v/${vaultId}/exercises`);
+
+}
 
 export async function addExercise(vaultId: string, formData: FormData) {
   const name = String(formData.get("name") || "").trim();
@@ -17,22 +22,22 @@ export async function addExercise(vaultId: string, formData: FormData) {
   if (!name) return;
 
   await createExercise(vaultId, { name, modality });
-  revalidatePath(`/v/${vaultId}/exercises`);
+  revalidateExercise(vaultId);
 }
 
 export async function archiveExerciseAction(vaultId: string, id: string) {
   await archiveExercise(vaultId, id);
-  revalidatePath(`/v/${vaultId}/exercises`);
+  revalidateExercise(vaultId);
 }
 
 export async function unarchiveExerciseAction(vaultId: string, id: string) {
   await unarchiveExercise(vaultId, id);
-  revalidatePath(`/v/${vaultId}/exercises`);
+  revalidateExercise(vaultId);
 }
 
 export async function removeExercise(vaultId: string, id: string) {
   await deleteExerciseHard(vaultId, id);
-  revalidatePath(`/v/${vaultId}/exercises`);
+  revalidateExercise(vaultId);
 }
 
 export async function updateExerciseAction(
@@ -48,7 +53,7 @@ export async function updateExerciseAction(
 
   await updateExercise(vaultId, exerciseId, { name, modality, uses_bodyweight });
 
-  revalidatePath(`/v/${vaultId}/exercises`);
+  revalidateExercise(vaultId);
   revalidatePath(`/v/${vaultId}/exercises?edit=${exerciseId}`);
 }
 
@@ -77,14 +82,6 @@ export async function updateExerciseTargetsAction(
 
   await setExerciseTargets(vaultId, exerciseId, picks);
 
-  revalidatePath(`/v/${vaultId}/exercises`);
+  revalidateExercise(vaultId);
   revalidatePath(`/v/${vaultId}/exercises?edit=${exerciseId}`);
-}
-
-export async function fetchMuscleGroups() {
-  return await listAnatomicalTargets({ kind: "MUSCLE_GROUP" });
-}
-
-export async function fetchExerciseMuscleTargets(exerciseId: string) {
-  return await listExerciseTargets(exerciseId);
 }

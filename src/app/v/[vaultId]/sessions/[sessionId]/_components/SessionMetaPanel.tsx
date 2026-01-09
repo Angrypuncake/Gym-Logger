@@ -1,7 +1,5 @@
 // src/app/v/[vaultId]/sessions/[sessionId]/_components/SessionMetaPanel.tsx
 "use client";
-
-import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { FnForm } from "./types";
