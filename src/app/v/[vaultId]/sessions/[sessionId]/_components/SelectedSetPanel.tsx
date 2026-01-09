@@ -3,7 +3,6 @@
 
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import type { EntryRow, FnForm, SetRow } from "./types";
 import { isSetLogged, safeNumber } from "./utils";

@@ -7,6 +7,10 @@ import { SelectedSetPanel } from "./_components/SelectedSetPanel";
 import { AddExercisePanel } from "./_components/AddExercisePanel";
 import { ExercisesPanel } from "./_components/ExercisePanel";
 import { MobileSetSheet } from "./_components/MobileSetSheet";
+import { SessionMuscleAnalyticsPanel } from "./_components/SessionMuscleAnalyticsPanel";
+
+
+type MuscleTarget = { targetId: string; targetName: string; role: string };
 
 function useMediaQuery(query: string) {
   const [matches, setMatches] = React.useState(false);
@@ -42,8 +46,7 @@ export default function SessionLogger({
   removeEntryAction,
   moveEntryUpAction,
   moveEntryDownAction,
-
-  
+  muscleTargetsByExerciseId,
 }: {
   entries: EntryRow[];
   allExercises: ExercisePick[];
@@ -57,6 +60,7 @@ export default function SessionLogger({
   removeEntryAction?: FnEntryId;
   moveEntryUpAction?: FnEntryId;
   moveEntryDownAction?: FnEntryId;
+  muscleTargetsByExerciseId?: Record<string, MuscleTarget[]>;
 }) {
 
   const [selected, setSelected] = React.useState<{ entryId: string; setId: string } | null>(null);
@@ -91,6 +95,18 @@ export default function SessionLogger({
         moveEntryUpAction={moveEntryUpAction}
         moveEntryDownAction={moveEntryDownAction}
       />
+      {/* Mobile: collapsible analytics */}
+      <div className="lg:hidden">
+        <details className="rounded-md border border-border bg-muted/5 px-3 py-2">
+          <summary className="cursor-pointer select-none text-sm font-medium">Muscle sets</summary>
+          <div className="mt-3">
+            <SessionMuscleAnalyticsPanel
+              entries={entries}
+              muscleTargetsByExerciseId={muscleTargetsByExerciseId ?? {}}
+            />
+          </div>
+        </details>
+      </div>
 
       <div className="hidden lg:block self-start lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] overflow-auto">
         <SelectedSetPanel
@@ -101,6 +117,20 @@ export default function SessionLogger({
           saveSetAction={saveSetAction}
           deleteUnloggedSetAction={deleteUnloggedSetAction}
         />
+        <div className="space-y-4">
+          <SessionMuscleAnalyticsPanel
+            entries={entries}
+            muscleTargetsByExerciseId={muscleTargetsByExerciseId ?? {}}
+          />
+          <SelectedSetPanel
+            selectedSet={selectedSet}
+            bodyWeightKg={bodyWeightKg}
+            updateBodyweightAction={updateBodyweightAction}
+            onClearSelection={() => setSelected(null)}
+            saveSetAction={saveSetAction}
+           deleteUnloggedSetAction={deleteUnloggedSetAction}
+          />
+        </div>
       </div>
 
       <div className="lg:col-span-2">

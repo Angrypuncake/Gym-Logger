@@ -12,9 +12,6 @@ import {
   
 } from "./actions";
 
-import { Button } from "@/components/ui/button";
-
-
 import SessionLogger from "./SessionLogger";
 import { SessionHeader } from "./_components/SessionHeader";
 
@@ -56,82 +53,6 @@ function toTimeLocal(valueIso: string, timeZone = APP_TZ) {
 
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
   return `${get("hour")}:${get("minute")}`;
-}
-
-
-/**
- * datetime-local expects: YYYY-MM-DDTHH:mm (no timezone).
- * IMPORTANT: this runs on the server, so use a fixed TZ to avoid UTC shifts.
- */
-function toDatetimeLocal(valueIso: string, timeZone = APP_TZ) {
-  const d = new Date(valueIso);
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(d);
-
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
-}
-
-function TimingControlRow(props: {
-  label: string;
-  isSet: boolean;
-  inputName: "started_at" | "finished_at";
-  defaultValue: string;
-  nowAction: (formData: FormData) => Promise<void>;
-  clearAction: (formData: FormData) => Promise<void>;
-  saveAction: (formData: FormData) => Promise<void>;
-  nowVariant?: "default" | "secondary";
-}) {
-  const {
-    label,
-    isSet,
-    inputName,
-    defaultValue,
-    nowAction,
-    clearAction,
-    saveAction,
-    nowVariant = "secondary",
-  } = props;
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <div className="text-xs font-medium text-muted-foreground">{label}</div>
-        {!isSet ? (
-          <form action={nowAction}>
-            <Button type="submit" size="sm" variant={nowVariant}>
-              Set now
-            </Button>
-          </form>
-        ) : (
-          <form action={clearAction}>
-            <Button type="submit" size="sm" variant="secondary">
-              Clear
-            </Button>
-          </form>
-        )}
-      </div>
-
-      <form action={saveAction} className="flex items-center gap-2">
-        <input
-          name={inputName}
-          type="datetime-local"
-          defaultValue={defaultValue}
-          className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-        <Button type="submit" size="sm" variant="secondary">
-          Save
-        </Button>
-      </form>
-    </div>
-  );
 }
 
 
@@ -204,6 +125,44 @@ export default async function SessionPage({ params }: { params: Promise<{ vaultI
     ...e,
     sets: setsByEntry.get(e.id) ?? [],
   }));
+  
+
+  
+  // --- muscle targets (per exercise) for the session analytics panel ---
+  type MuscleTarget = { targetId: string; targetName: string; role: string };
+  const muscleTargetsByExerciseId: Record<string, MuscleTarget[]> = {};
+
+  const exerciseIds = (entries ?? [])
+    .map((e: any) => (e.exercise ? (e.exercise as any).id : null))
+    .filter(Boolean) as string[];
+
+  if (exerciseIds.length > 0) {
+    const { data: tRows, error: tErr } = await supabase
+      .from("exercise_targets")
+      .select("exercise_id,role,target:anatomical_targets!exercise_targets_target_id_fkey(id,name,kind)")
+      .eq("vault_id", vaultId)
+      .in("exercise_id", exerciseIds);
+
+    if (tErr) return <pre>{tErr.message}</pre>;
+
+    for (const r of (tRows ?? []) as any[]) {
+      const t = r.target;
+      if (!t) continue;
+
+      // exercise_targets should already be muscles in your model;
+      // but keep a defensive filter to avoid tendon kinds leaking in.
+      const kind = String(t.kind ?? "");
+      if (kind.toUpperCase() === "TENDON") continue;
+
+      const arr = muscleTargetsByExerciseId[r.exercise_id] ?? [];
+      arr.push({ targetId: t.id, targetName: t.name, role: r.role });
+      muscleTargetsByExerciseId[r.exercise_id] = arr;
+    }
+  }
+
+
+
+
 
   const planned = sets.length;
   const completed = sets.filter(
@@ -250,6 +209,7 @@ export default async function SessionPage({ params }: { params: Promise<{ vaultI
         removeEntryAction={removeExerciseFromSession.bind(null, vaultId, sessionId)}
         moveEntryUpAction={moveEntryUp.bind(null, vaultId, sessionId)}
         moveEntryDownAction={moveEntryDown.bind(null, vaultId, sessionId)}
+        muscleTargetsByExerciseId={muscleTargetsByExerciseId}
       />
     </div>
   );
