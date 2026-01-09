@@ -23,7 +23,6 @@ export async function ExerciseEditorPanel({
   vaultId: string;
   exercise: Exercise | null;
 }) {
-  const clearHref = `/v/${vaultId}/exercises`;
 
   if (!exercise) {
     return (

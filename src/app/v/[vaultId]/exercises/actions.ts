@@ -30,10 +30,6 @@ export async function unarchiveExerciseAction(vaultId: string, id: string) {
   revalidatePath(`/v/${vaultId}/exercises`);
 }
 
-/**
- * Hard delete. Should be used rarely; deleteExerciseHard enforces "unused only".
- * If referenced anywhere, it throws an error.
- */
 export async function removeExercise(vaultId: string, id: string) {
   await deleteExerciseHard(vaultId, id);
   revalidatePath(`/v/${vaultId}/exercises`);

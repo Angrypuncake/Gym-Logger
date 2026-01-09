@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import SetBlocksControl from "./SetBlocksControl";
 import { ExercisePicker } from "../../exercises/ExercisePicker";
+import { getTemplateEditorData } from "@/db/templates";
 
 type ItemRow = {
   id: string;
@@ -30,31 +31,8 @@ export default async function TemplateEditorPage({
   params: Promise<{ vaultId: string; templateId: string }>;
 }) {
   const { vaultId, templateId } = await params;
-  const supabase = await createClient();
 
-  const { data: template, error: tErr } = await supabase
-    .from("templates")
-    .select("id,name,sort_order")
-    .eq("vault_id", vaultId)
-    .eq("id", templateId)
-    .single();
-
-  if (tErr) return <pre>{tErr.message}</pre>;
-
-  const { data: items, error: iErr } = await supabase
-    .from("template_items")
-    .select("id,sort_order,target_sets,exercise_id, exercise:exercises(id,name,modality)")
-    .eq("vault_id", vaultId)
-    .eq("template_id", templateId)
-    .order("sort_order", { ascending: true });
-
-  if (iErr) return <pre>{iErr.message}</pre>;
-
-  const { data: exercises } = await supabase
-    .from("exercises")
-    .select("id,name,modality")
-    .eq("vault_id", vaultId)
-    .order("name", { ascending: true });
+  const { template, items, exercises } = await getTemplateEditorData(vaultId, templateId);
 
   const used = new Set(
     ((items as unknown as ItemRow[]) ?? []).map((it) => it.exercise_id).filter(Boolean)

@@ -1,5 +1,5 @@
+import { createExercise, deleteExercise } from "@/db/exercises";
 import { createClient } from "@/lib/supabase/server";
-import { createExercise, deleteExercise } from "./actions";
 import type { Tables } from "@/types/supabase";
 
 export default async function ExercisesPage() {
@@ -25,7 +25,7 @@ export default async function ExercisesPage() {
           const name = String(fd.get("name") || "");
           const modality = String(fd.get("modality") || "REPS") as "REPS" | "ISOMETRIC";
 
-          await createExercise({ vault_id, name, modality });
+          await createExercise(vault_id, {name, modality });
         }}
         style={{ display: "flex", gap: 8, marginBottom: 16 }}
       >

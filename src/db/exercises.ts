@@ -19,6 +19,8 @@ export type ExercisesPageResult = {
   pageSize: number;
 };
 
+
+
 // Existing (kept for other callers)
 export async function listExercises(vaultId: string): Promise<Exercise[]> {
   const supabase = await createClient();
@@ -103,16 +105,30 @@ export async function createExercise(
   if (error) throw new Error(error.message);
 }
 
-export async function updateExercise(vaultId: string, id: string, patch: TablesUpdate<"exercises">) {
+
+export async function updateExercise(
+  vaultId: string,
+  id: string,
+  patch: Omit<TablesUpdate<"exercises">, "vault_id">
+) {
   const supabase = await createClient();
-  const { error } = await supabase
+
+  const { error, count } = await supabase
     .from("exercises")
-    .update(patch)
+    .update(patch, { count: "exact" })
     .eq("id", id)
     .eq("vault_id", vaultId);
 
   if (error) throw new Error(error.message);
+  if (count === 0) throw new Error("Exercise not found in this vault.");
 }
+
+export async function deleteExercise(id: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("exercises").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 
 export async function archiveExercise(vaultId: string, id: string) {
   const supabase = await createClient();

@@ -35,3 +35,37 @@ export async function listTemplateItemPreviews(vaultId: string, templateIds: str
   }
   return map;
 }
+
+
+
+export async function getTemplateEditorData(vaultId: string, templateId: string) {
+const supabase = await createClient();
+const { data: template, error: tErr } = await supabase
+    .from("templates")
+    .select("id,name,sort_order")
+    .eq("vault_id", vaultId)
+    .eq("id", templateId)
+    .single();
+
+    if (tErr) throw new Error(tErr.message);
+
+
+  const { data: items, error: iErr } = await supabase
+    .from("template_items")
+    .select("id,sort_order,target_sets,exercise_id, exercise:exercises(id,name,modality)")
+    .eq("vault_id", vaultId)
+    .eq("template_id", templateId)
+    .order("sort_order", { ascending: true });
+
+    if (iErr) throw new Error(iErr.message);
+
+
+  const { data: exercises, error: eErr } = await supabase
+    .from("exercises")
+    .select("id,name,modality")
+    .eq("vault_id", vaultId)
+    .order("name", { ascending: true });
+    if (eErr) throw new Error(eErr.message);
+
+  return {template, items: items ?? [], exercises: exercises ?? []};
+}
