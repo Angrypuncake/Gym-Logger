@@ -1,20 +1,19 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import {
-  addExerciseToSession,
-  saveSet,
-  updateBodyweight,
-  addSetToEntry,
-  deleteUnloggedSetFromForm,
   moveEntryUp,
   moveEntryDown,
-  removeExerciseFromSession,
+  updateBodyweightAction,
+  addExerciseToSessionAction,
+  saveSetAction,
+  addSetToEntryAction,
+  deleteUnloggedSetFromFormAction,
+  removeExerciseFromSessionAction,
   
 } from "./actions";
 
 import SessionLogger from "./SessionLogger";
 import { SessionHeader } from "./_components/SessionHeader";
-
 
 type SetRow = {
   id: string;
@@ -161,9 +160,6 @@ export default async function SessionPage({ params }: { params: Promise<{ vaultI
   }
 
 
-
-
-
   const planned = sets.length;
   const completed = sets.filter(
     (x) => x.reps !== null || x.duration_sec !== null || x.weight_kg !== null
@@ -194,19 +190,19 @@ export default async function SessionPage({ params }: { params: Promise<{ vaultI
         startTime={startTime}
         endTime={endTime}
         bodyWeightKg={session.body_weight_kg as number | null}
-        updateBodyweightAction={updateBodyweight.bind(null, vaultId, sessionId)}
+        updateBodyweightAction={updateBodyweightAction.bind(null, vaultId, sessionId)}
       />
 
       <SessionLogger
         entries={entriesWithSets as any}
         allExercises={(allExercises ?? []) as any}
         bodyWeightKg={session.body_weight_kg as number | null}
-        updateBodyweightAction={updateBodyweight.bind(null, vaultId, sessionId)}
-        saveSetAction={saveSet.bind(null, vaultId, sessionId)}
-        addExerciseAction={addExerciseToSession.bind(null, vaultId, sessionId)}
-        addSetAction={addSetToEntry.bind(null, vaultId, sessionId)}
-        deleteUnloggedSetAction={deleteUnloggedSetFromForm.bind(null, vaultId, sessionId)}
-        removeEntryAction={removeExerciseFromSession.bind(null, vaultId, sessionId)}
+        updateBodyweightAction={updateBodyweightAction.bind(null, vaultId, sessionId)}
+        saveSetAction={saveSetAction.bind(null, vaultId, sessionId)}
+        addExerciseAction={addExerciseToSessionAction.bind(null, vaultId, sessionId)}
+        addSetAction={addSetToEntryAction.bind(null, vaultId, sessionId)}
+        deleteUnloggedSetAction={deleteUnloggedSetFromFormAction.bind(null, vaultId, sessionId)}
+        removeEntryAction={removeExerciseFromSessionAction.bind(null, vaultId, sessionId)}
         moveEntryUpAction={moveEntryUp.bind(null, vaultId, sessionId)}
         moveEntryDownAction={moveEntryDown.bind(null, vaultId, sessionId)}
         muscleTargetsByExerciseId={muscleTargetsByExerciseId}

@@ -9,9 +9,9 @@ import type { SummaryRow, TemplateRow } from "./types";
 import { pctDone } from "./utils";
 
 
-import { discardWorkout } from "../[sessionId]/actions";
 import ConfirmSubmitButton from "../[sessionId]/ConfirmSubmitButton";
 import { createSessionAction } from "../actions";
+import { discardWorkoutAction } from "../[sessionId]/actions";
 
 export function DayPanel({
   vaultId,
@@ -116,7 +116,7 @@ export function DayPanel({
                     <Button size="sm">Open</Button>
                   </Link>
 
-                  <form action={discardWorkout.bind(null, vaultId, s.session_id)}>
+                  <form action={discardWorkoutAction.bind(null, vaultId, s.session_id)}>
                     <ConfirmSubmitButton
                       variant="destructive"
                       size="sm"

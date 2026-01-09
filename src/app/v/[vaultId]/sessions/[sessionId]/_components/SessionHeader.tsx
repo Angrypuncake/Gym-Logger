@@ -3,13 +3,7 @@
 
 import { Button } from "@/components/ui/button";
 import ConfirmSubmitButton from "../ConfirmSubmitButton";
-import {
-  clearFinishTime,
-  clearStartTime,
-  discardWorkout,
-  setFinishTimeFromForm,
-  setStartTimeFromForm,
-} from "../actions";
+
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import VaultNav from "../../../_components/VaultNav";
@@ -17,6 +11,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import type { FnForm } from "./types";
+
+import { clearFinishTimeAction, clearStartTimeAction, discardWorkoutAction, setFinishTimeFromFormAction, setStartTimeFromFormAction } from "../actions";
 
 const APP_TZ = "Australia/Sydney";
 
@@ -109,7 +105,7 @@ export function SessionHeader(props: {
             </div>
             <div className="flex items-center gap-2">
               <form
-                action={setStartTimeFromForm.bind(null, vaultId, sessionId, sessionDay)}
+                action={setStartTimeFromFormAction.bind(null, vaultId, sessionId, sessionDay)}
                 className="flex items-center gap-2 flex-1"
               >
                 <input
@@ -124,7 +120,7 @@ export function SessionHeader(props: {
               </form>
 
               {startSet ? (
-                <form action={clearStartTime.bind(null, vaultId, sessionId)}>
+                <form action={clearStartTimeAction.bind(null, vaultId, sessionId)}>
                   <Button type="submit" size="sm" variant="secondary">
                     Clear
                   </Button>
@@ -140,7 +136,7 @@ export function SessionHeader(props: {
             </div>
             <div className="flex items-center gap-2">
               <form
-                action={setFinishTimeFromForm.bind(null, vaultId, sessionId, sessionDay)}
+                action={setFinishTimeFromFormAction.bind(null, vaultId, sessionId, sessionDay)}
                 className="flex items-center gap-2 flex-1"
               >
                 <input
@@ -155,7 +151,7 @@ export function SessionHeader(props: {
               </form>
 
               {endSet ? (
-                <form action={clearFinishTime.bind(null, vaultId, sessionId)}>
+                <form action={clearFinishTimeAction.bind(null, vaultId, sessionId)}>
                   <Button type="submit" size="sm" variant="secondary">
                     Clear
                   </Button>
@@ -167,7 +163,7 @@ export function SessionHeader(props: {
           {/* Danger */}
           <div className="space-y-2">
             <div className="text-xs font-medium text-muted-foreground">Danger</div>
-            <form action={discardWorkout.bind(null, vaultId, sessionId)} className="flex">
+            <form action={discardWorkoutAction.bind(null, vaultId, sessionId)} className="flex">
               <ConfirmSubmitButton
                 variant="destructive"
                 size="sm"
