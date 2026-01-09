@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { createTemplate } from "./actions";
+import { createTemplateAction } from "./actions";
+
 
 export default async function NewTemplatePage({
   params,
@@ -15,7 +16,7 @@ export default async function NewTemplatePage({
         <Link href={`/v/${vaultId}`}>Back</Link>
       </div>
 
-      <form action={createTemplate.bind(null, vaultId)} style={{ marginTop: 16, display: "grid", gap: 10 }}>
+      <form action={createTemplateAction.bind(null, vaultId)} style={{ marginTop: 16, display: "grid", gap: 10 }}>
         <label style={{ display: "grid", gap: 6 }}>
           <span style={{ opacity: 0.8 }}>Name</span>
           <input name="name" placeholder="e.g., Pull + Push" autoFocus />
