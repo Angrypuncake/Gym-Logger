@@ -36,8 +36,6 @@ export async function listTemplateItemPreviews(vaultId: string, templateIds: str
   return map;
 }
 
-
-
 export async function getTemplateEditorData(vaultId: string, templateId: string) {
 const supabase = await createClient();
 const { data: template, error: tErr } = await supabase
@@ -69,3 +67,36 @@ const { data: template, error: tErr } = await supabase
 
   return {template, items: items ?? [], exercises: exercises ?? []};
 }
+
+export async function createTemplate(vaultId: string, formData: FormData) {
+  const name = String(formData.get("name") || "").trim();
+  if (!name) throw new Error("Template name is required");
+
+  const supabase = await createClient();
+
+  // next order = max(order)+1
+  const { data: last, error: lastErr } = await supabase
+    .from("templates")
+    .select("sort_order")
+    .eq("vault_id", vaultId)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (lastErr) throw new Error(lastErr.message);
+
+  const nextOrder = (last?.sort_order ?? 0) + 1;
+
+  const { data: tpl, error } = await supabase
+    .from("templates")
+    .insert({ vault_id: vaultId, name, sort_order: nextOrder })
+    .select("id")
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  return {tpl, last}
+  
+}
+
+

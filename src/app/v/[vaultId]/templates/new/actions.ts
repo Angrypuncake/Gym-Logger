@@ -1,34 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createTemplate } from "@/db/templates";
 
-export async function createTemplate(vaultId: string, formData: FormData) {
-  const name = String(formData.get("name") || "").trim();
-  if (!name) return;
-
-  const supabase = await createClient();
-
-  // next order = max(order)+1
-  const { data: last, error: lastErr } = await supabase
-    .from("templates")
-    .select("sort_order")
-    .eq("vault_id", vaultId)
-    .order("sort_order", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (lastErr) throw new Error(lastErr.message);
-
-  const nextOrder = (last?.sort_order ?? 0) + 1;
-
-  const { data: tpl, error } = await supabase
-    .from("templates")
-    .insert({ vault_id: vaultId, name, sort_order: nextOrder })
-    .select("id")
-    .single();
-
-  if (error) throw new Error(error.message);
-
+export async function createTemplateAction(vaultId: string, formData: FormData){
+  const { tpl } = await createTemplate(vaultId, formData)
   redirect(`/v/${vaultId}/templates/${tpl.id}`);
 }
