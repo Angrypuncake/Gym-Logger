@@ -1,27 +1,7 @@
 // src/app/v/[vaultId]/analytics/page.tsx
 import { fetchMuscleWeeklyMetrics, fetchTendonWeeklyMetrics } from "@/db/analytics";
 import AnalyticsClient from "./_components/AnalyticsClient";
-
-type SearchParams = Record<string, string | string[] | undefined>;
-
-function pickFirst(v: string | string[] | undefined): string | undefined {
-  if (!v) return undefined;
-  return Array.isArray(v) ? v[0] : v;
-}
-
-function clampInt(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n));
-}
-
-function addDays(d: Date, days: number) {
-  const x = new Date(d);
-  x.setDate(x.getDate() + days);
-  return x;
-}
-
-function toISODate(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
+import { addDays, clampInt, pickFirst, SearchParams, toISODate } from "./utils";
 
 export default async function AnalyticsPage({
   params,

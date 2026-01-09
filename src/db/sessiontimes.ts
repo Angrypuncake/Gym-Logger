@@ -19,76 +19,6 @@ async function updateSessionTimes(
   revalidatePath(`/v/${vaultId}/sessions`);
   revalidatePath(`/v/${vaultId}/sessions/${sessionId}`);
 }
-
-
-async function getSessionTimes(supabase: any, vaultId: string, sessionId: string) {
-    const { data, error } = await supabase
-      .from("workout_sessions")
-      .select("started_at,finished_at")
-      .eq("vault_id", vaultId)
-      .eq("id", sessionId)
-      .single();
-  
-    if (error) throw new Error(error.message);
-    return data as { started_at: string | null; finished_at: string | null };
-  }
-
-
-export async function setStartAtFromForm(
-  vaultId: string,
-  sessionId: string,
-  formData: FormData
-) {
-  const supabase = await createClient();
-  const t = await getSessionTimes(supabase, vaultId, sessionId);
-
-  const raw = String(formData.get("started_at") ?? "");
-  if (!raw) throw new Error("Missing started_at");
-
-  // raw is "YYYY-MM-DDTHH:mm" (datetime-local). Interpreted as local time.
-  const iso = new Date(raw).toISOString();
-
-  const patch: { started_at: string; finished_at?: string } = { started_at: iso };
-
-  // preserve CHECK (finished_at >= started_at)
-  if (t.finished_at) {
-    const fin = new Date(t.finished_at).getTime();
-    const start = new Date(iso).getTime();
-    if (fin < start) patch.finished_at = iso;
-  }
-
-  await updateSessionTimes(supabase, vaultId, sessionId, patch);
-  revalidatePath(`/v/${vaultId}/sessions/${sessionId}`);
-}
-
-export async function setFinishAtFromForm(
-  vaultId: string,
-  sessionId: string,
-  formData: FormData
-) {
-  const supabase = await createClient();
-  const t = await getSessionTimes(supabase, vaultId, sessionId);
-
-  const raw = String(formData.get("finished_at") ?? "");
-  if (!raw) throw new Error("Missing finished_at");
-
-  const iso = new Date(raw).toISOString();
-
-  const patch: { finished_at: string; started_at?: string } = { finished_at: iso };
-
-  // preserve CHECK (finished_at >= started_at)
-  if (t.started_at) {
-    const start = new Date(t.started_at).getTime();
-    const fin = new Date(iso).getTime();
-    if (start > fin) patch.started_at = iso;
-  }
-
-  await updateSessionTimes(supabase, vaultId, sessionId, patch);
-  revalidatePath(`/v/${vaultId}/sessions/${sessionId}`);
-}
-
-
-
 function partsFromTz(date: Date, timeZone: string) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -179,8 +109,6 @@ export async function setStartTimeFromForm(
     .eq("id", sessionId);
 
   if (error) throw new Error(error.message);
-
-  revalidatePath(`/v/${vaultId}/sessions/${sessionId}`);
 }
 
 export async function setFinishTimeFromForm(
@@ -216,7 +144,6 @@ export async function setFinishTimeFromForm(
     .eq("id", sessionId);
 
   if (error) throw new Error(error.message);
-  revalidatePath(`/v/${vaultId}/sessions/${sessionId}`);
 }
 
 
