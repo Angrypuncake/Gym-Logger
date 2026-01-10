@@ -42,7 +42,7 @@ export function SelectedSetPanel({
       setDurationStr("");
     } else {
       setDurationStr(set.duration_sec == null ? "" : String(set.duration_sec));
-      setWeightStr("");
+      setWeightStr(set.weight_kg == null ? "" : String(set.weight_kg));
       setRepsStr("");
     }
   }, [selectedSet]);
@@ -53,7 +53,6 @@ export function SelectedSetPanel({
     if (!ex.uses_bodyweight) return null;
     if (bodyWeightKg == null) return null;
 
-    // REPS: external from input; ISOMETRIC: external is 0 (weightStr is "")
     const external = safeNumber(weightStr);
     return bodyWeightKg + external;
   }, [selectedSet, bodyWeightKg, weightStr]);
@@ -78,9 +77,12 @@ export function SelectedSetPanel({
     return null;
   }, [prevSets]);
 
+  const lastSetWithDuration = React.useMemo(() => {
+    for (const s of prevSets) if (s.duration_sec != null) return s;
+    return null;
+  }, [prevSets]);
+
   const canPrefill = !!selectedSet && selectedSet.set.set_index > 0;
-  const canSameWeight = canPrefill && !!lastSetWithWeight;
-  const canSameReps = canPrefill && !!lastSetWithReps;
 
   function applySameWeight() {
     if (!lastSetWithWeight) return;
@@ -91,6 +93,16 @@ export function SelectedSetPanel({
     if (!lastSetWithReps) return;
     setRepsStr(String(lastSetWithReps.reps));
   }
+
+  function applySameDuration() {
+    if (!lastSetWithDuration) return;
+    setDurationStr(String(lastSetWithDuration.duration_sec));
+  }
+
+  const isReps = selectedSet?.entry.exercise.modality === "REPS";
+  const canSameWeight = canPrefill && !!lastSetWithWeight;
+  const canSameReps = canPrefill && !!lastSetWithReps;
+  const canSameDuration = canPrefill && !!lastSetWithDuration;
 
   return (
     <Card>
@@ -110,7 +122,7 @@ export function SelectedSetPanel({
           <form action={saveSetAction} className="space-y-3">
             <input type="hidden" name="set_id" value={selectedSet.set.id} />
 
-            {selectedSet.entry.exercise.modality === "REPS" ? (
+            {isReps ? (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
@@ -165,16 +177,58 @@ export function SelectedSetPanel({
                 )}
               </div>
             ) : (
-              <div className="space-y-1">
-                <div className="text-xs text-muted-foreground">Duration (sec)</div>
-                <input
-                  name="duration_sec"
-                  inputMode="numeric"
-                  placeholder="(blank = unset)"
-                  value={durationStr}
-                  onChange={(e) => setDurationStr(e.target.value)}
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted-foreground">External (kg)</div>
+                    <input
+                      name="weight_kg"
+                      inputMode="decimal"
+                      placeholder="(blank = unset)"
+                      value={weightStr}
+                      onChange={(e) => setWeightStr(e.target.value)}
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted-foreground">Duration (sec)</div>
+                    <input
+                      name="duration_sec"
+                      inputMode="numeric"
+                      placeholder="(blank = unset)"
+                      value={durationStr}
+                      onChange={(e) => setDurationStr(e.target.value)}
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  </div>
+                </div>
+
+                {selectedSet.set.set_index > 0 && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="justify-center"
+                      disabled={!canSameWeight}
+                      onClick={applySameWeight}
+                    >
+                      Same weight
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="justify-center"
+                      disabled={!canSameDuration}
+                      onClick={applySameDuration}
+                    >
+                      Same duration
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 

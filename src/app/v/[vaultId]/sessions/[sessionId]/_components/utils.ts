@@ -2,10 +2,16 @@
 import type { Modality, SetRow } from "./types";
 
 export function isSetLogged(s: SetRow) {
+  // “has any data”
   return s.reps !== null || s.weight_kg !== null || s.duration_sec !== null;
 }
 
-// src/app/v/[vaultId]/sessions/[sessionId]/_components/utils.ts
+// “counts as completed” (modality-specific)
+export function isSetDone(modality: Modality, s: SetRow) {
+  if (modality === "ISOMETRIC") return s.duration_sec !== null && s.duration_sec > 0;
+  return s.reps !== null || s.weight_kg !== null;
+}
+
 export function fmtSetLabel(
   modality: Modality,
   s: SetRow,
@@ -29,15 +35,19 @@ export function fmtSetLabel(
     return { top, sub };
   }
 
+  // ISOMETRIC
   const top = s.duration_sec != null ? String(s.duration_sec) : "✓";
 
   if (usesBW && bw != null) {
-    return { top, sub: ` ${bw.toFixed(1)}kg` };
+    const external = s.weight_kg ?? 0;
+    const total = bw + external;
+    return { top, sub: ` ${total.toFixed(1)}kg` };
   }
+
+  if (s.weight_kg != null) return { top, sub: `${s.weight_kg}kg` };
 
   return { top, sub: "s" };
 }
-
 
 export function safeNumber(input: string) {
   const n = Number(input);

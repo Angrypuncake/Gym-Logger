@@ -60,7 +60,6 @@ export async function saveSetDb(params: {
     patch.weight_kg = weightKg;
   } else {
     if (reps !== null) throw new Error("Reps not allowed for ISOMETRIC modality.");
-    if (weightKg !== null) throw new Error("Weight not allowed for ISOMETRIC modality.");
     patch.duration_sec = durationSec;
   }
 

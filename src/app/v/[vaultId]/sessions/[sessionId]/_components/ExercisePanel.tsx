@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { EntryRow } from "./types";
-import { fmtSetLabel, isSetLogged } from "./utils";
+import { fmtSetLabel, isSetDone, isSetLogged } from "./utils";
 import ConfirmSubmitButton from "../ConfirmSubmitButton";
 
 export function ExercisesPanel({
@@ -39,7 +39,7 @@ export function ExercisesPanel({
         {entries.map((entry, idx) => {
           const ex = entry.exercise;
           const totalSets = entry.sets.length;
-          const done = entry.sets.filter(isSetLogged).length;
+          const done = entry.sets.filter((s) => isSetDone(ex.modality, s)).length;
 
           const canMoveUp = idx > 0 && !!moveEntryUpAction;
           const canMoveDown = idx < entries.length - 1 && !!moveEntryDownAction;
@@ -130,10 +130,9 @@ export function ExercisesPanel({
 
               <div className="mt-3 flex flex-wrap gap-2">
                 {entry.sets.map((s) => {
-                  const logged = isSetLogged(s);
+                  const done = isSetDone(ex.modality, s);
                   const isSelected = selected?.setId === s.id;
 
-                  // Default label (keeps your existing logic)
                   const base = fmtSetLabel(ex.modality, s, {
                     usesBodyweight: ex.uses_bodyweight,
                     bodyWeightKg,
@@ -144,11 +143,11 @@ export function ExercisesPanel({
 
                   // Low-clutter BW display:
                   // - Primary = total system load
-                  // - Secondary (small/italic) = external load, only if > 0
+                  // - Secondary = external load, only if > 0
                   const usesBW = ex.uses_bodyweight && bodyWeightKg != null;
                   const hasExternal = s.weight_kg != null && s.weight_kg > 0;
 
-                  if (logged && usesBW && ex.modality === "REPS") {
+                  if (done && usesBW) {
                     const external = s.weight_kg ?? 0;
                     const total = bodyWeightKg! + external;
 
@@ -165,6 +164,9 @@ export function ExercisesPanel({
                         )}
                       </span>
                     );
+                  } else if (isSetLogged(s) && usesBW && bodyWeightKg != null && !done) {
+                    // If partially logged, keep base label (don’t imply “done” totals)
+                    subNode = base.sub;
                   }
 
                   return (
@@ -175,7 +177,7 @@ export function ExercisesPanel({
                       className={[
                         "h-11 w-11 rounded-xl border grid place-items-center relative",
                         "transition-transform duration-100 active:scale-95",
-                        logged ? "border-emerald-500/40 bg-emerald-500/10" : "border-border bg-background",
+                        done ? "border-emerald-500/40 bg-emerald-500/10" : "border-border bg-background",
                         isSelected ? "ring-2 ring-ring" : "",
                       ].join(" ")}
                       aria-pressed={isSelected}

@@ -5,28 +5,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { EntryRow } from "./types";
 import { isSetDone } from "./utils";
 
-type MuscleTarget = { targetId: string; targetName: string; role: string };
+type TendonTarget = { targetId: string; targetName: string; confidence: string };
 
-function roleWeight(role: string) {
-  switch (role) {
-    case "PRIMARY":
-      return 1;
-    case "SECONDARY":
-      return 0.5;
-    case "STABILIZER":
-      return 0.25;
+function confidenceWeight(confidence: string) {
+  switch ((confidence ?? "").toUpperCase()) {
+    case "HIGH":
+      return 1.0;
+    case "MED":
+    case "MEDIUM":
+      return 0.67;
+    case "LOW":
+      return 0.33;
     default:
-      return 1;
+      return 1.0;
   }
 }
 
-export function SessionMuscleAnalyticsPanel({
+export function SessionTendonAnalyticsPanel({
   entries,
-  muscleTargetsByExerciseId,
-  title = "Muscle effective sets",
+  tendonTargetsByExerciseId,
+  title = "Tendon effective sets",
 }: {
   entries: EntryRow[];
-  muscleTargetsByExerciseId: Record<string, MuscleTarget[]>;
+  tendonTargetsByExerciseId: Record<string, TendonTarget[]>;
   title?: string;
 }) {
   const [weighted, setWeighted] = React.useState(true);
@@ -37,10 +38,13 @@ export function SessionMuscleAnalyticsPanel({
     let unassignedPlanned = 0;
 
     for (const entry of entries) {
-      const plannedSets = entry.sets.length;
-      const doneSets = entry.sets.filter((s) => isSetDone(entry.exercise.modality, s)).length;
+      // Tendon panel is isometric-focused (matches your tendon daily/weekly metrics)
+      if (entry.exercise.modality !== "ISOMETRIC") continue;
 
-      const targets = muscleTargetsByExerciseId[entry.exercise.id] ?? [];
+      const plannedSets = entry.sets.length;
+      const doneSets = entry.sets.filter((s) => isSetDone("ISOMETRIC", s)).length;
+
+      const targets = tendonTargetsByExerciseId[entry.exercise.id] ?? [];
       if (targets.length === 0) {
         unassignedPlanned += plannedSets;
         unassignedDone += doneSets;
@@ -48,7 +52,7 @@ export function SessionMuscleAnalyticsPanel({
       }
 
       for (const t of targets) {
-        const w = weighted ? roleWeight(t.role) : 1;
+        const w = weighted ? confidenceWeight(t.confidence) : 1;
         const key = t.targetName;
 
         const cur = map.get(key) ?? { done: 0, planned: 0 };
@@ -67,7 +71,7 @@ export function SessionMuscleAnalyticsPanel({
     }
 
     return arr;
-  }, [entries, muscleTargetsByExerciseId, weighted]);
+  }, [entries, tendonTargetsByExerciseId, weighted]);
 
   const fmt = (n: number) => (weighted ? n.toFixed(1) : String(Math.round(n)));
 
@@ -83,14 +87,14 @@ export function SessionMuscleAnalyticsPanel({
             checked={weighted}
             onChange={(e) => setWeighted(e.target.checked)}
           />
-          <span>Role-weighted (Primary=1, Secondary=0.5, Stabilizer=0.25)</span>
+          <span>Confidence-weighted (High=1, Med=0.67, Low=0.33)</span>
         </label>
       </CardHeader>
 
       <CardContent className="pt-0">
         {rows.length === 0 ? (
           <div className="text-sm text-muted-foreground">
-            No targets for this session’s exercises. Assign muscle targets to exercises to see counts.
+            No tendon targets for this session’s isometric exercises. Assign tendon exposure to exercises to see counts.
           </div>
         ) : (
           <div className="space-y-2">
