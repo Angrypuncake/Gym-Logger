@@ -1,25 +1,36 @@
 // src/app/v/[vaultId]/analytics/_components/AnalyticsClient.tsx
 "use client";
 
-import type { MuscleWeeklyRow, TendonWeeklyRow } from "@/db/analytics";
+import type {
+  Grain,
+  MuscleDailyRow,
+  MuscleWeeklyRow,
+  TendonDailyRow,
+  TendonWeeklyRow,
+} from "@/db/analytics";
 import AnalyticsHeader from "./AnalyticsHeader";
 import TargetListCard, { TargetAgg } from "./TargetListCard";
-import WeeklyDetailsCard, { WeekAgg } from "./WeeklyDetailsCard";
-import { buildHref, roleWeight, Tab } from "./AnalyticsUtils";
 
+import { buildHref, roleWeight, Tab } from "./AnalyticsUtils";
+import PeriodDetailsCard, { PeriodAgg } from "./PeriodDetailsCard";
+
+type Row = MuscleWeeklyRow | MuscleDailyRow | TendonWeeklyRow | TendonDailyRow;
 
 export default function AnalyticsClient(props: {
   vaultId: string;
   tab: Tab;
+  grain: Grain;
   weeks: number;
   q: string;
   sort: string;
   targetId?: string;
   fromISO: string;
   toISO: string;
-  rawRows: Array<MuscleWeeklyRow | TendonWeeklyRow>;
+  rawRows: Row[];
 }) {
-  const { vaultId, tab, weeks, q, sort, targetId, fromISO, toISO, rawRows } = props;
+  const { vaultId, tab, grain, weeks, q, sort, targetId, fromISO, toISO, rawRows } = props;
+
+  const periodKey = grain === "day" ? "day_start" : "week_start";
 
   // -------- aggregate per target --------
   const byTarget = new Map<string, TargetAgg>();
@@ -29,12 +40,12 @@ export default function AnalyticsClient(props: {
     const name = (r as any).target_name as string;
 
     const sets = Number((r as any).set_count ?? 0);
-    const reps = Number((r as any).total_reps ?? 0);
     const iso = Number((r as any).total_iso_sec ?? 0);
-    const ton = Number((r as any).total_tonnage_kg ?? 0);
 
-    // NEW tendon metric
-    const isoLoad = Number((r as any).total_iso_load_kg_sec ?? 0);
+    const reps = tab === "muscles" ? Number((r as any).total_reps ?? 0) : 0;
+    const ton = tab === "muscles" ? Number((r as any).total_tonnage_kg ?? 0) : 0;
+
+    const isoLoad = tab === "tendons" ? Number((r as any).iso_exposure_kg_sec ?? 0) : 0;
 
     const role = tab === "muscles" ? String((r as any).role ?? "") : "";
     const eff = tab === "muscles" ? sets * roleWeight(role) : sets;
@@ -50,7 +61,6 @@ export default function AnalyticsClient(props: {
         iso_sec: 0,
         tonnage_kg: 0,
         iso_load_kg_sec: 0,
-        avg_iso_load_kg: null,
       } as TargetAgg);
 
     cur.sets += sets;
@@ -59,7 +69,6 @@ export default function AnalyticsClient(props: {
     cur.iso_sec += iso;
     cur.tonnage_kg += ton;
     cur.iso_load_kg_sec += isoLoad;
-    cur.avg_iso_load_kg = cur.iso_sec > 0 ? cur.iso_load_kg_sec / cur.iso_sec : null;
 
     byTarget.set(id, cur);
   }
@@ -70,53 +79,57 @@ export default function AnalyticsClient(props: {
 
   targets.sort((a, b) => {
     const key = sort.toLowerCase();
-    if (tab === "muscles" && key === "effective_sets") return b.effective_sets - a.effective_sets;
-    if (key === "sets") return b.sets - a.sets;
-    if (key === "reps") return b.reps - a.reps;
+
+    if (tab === "muscles") {
+      if (key === "effective_sets") return b.effective_sets - a.effective_sets;
+      if (key === "sets") return b.sets - a.sets;
+      if (key === "reps") return b.reps - a.reps;
+      if (key === "iso") return b.iso_sec - a.iso_sec;
+      if (key === "tonnage") return b.tonnage_kg - a.tonnage_kg;
+      return b.effective_sets - a.effective_sets;
+    }
+
+    // tendons
+    if (key === "iso_load") return b.iso_load_kg_sec - a.iso_load_kg_sec;
     if (key === "iso") return b.iso_sec - a.iso_sec;
-
-    if (tab === "tendons" && key === "iso_load") return b.iso_load_kg_sec - a.iso_load_kg_sec;
-    if (tab === "muscles" && key === "tonnage") return b.tonnage_kg - a.tonnage_kg;
-
-    return b.sets - a.sets;
+    if (key === "sets") return b.sets - a.sets;
+    return b.iso_load_kg_sec - a.iso_load_kg_sec;
   });
 
-  // Selection: ensure selectedId exists in current filtered list
   const selectedIdFromUrl = targetId;
   const selectedId =
     (selectedIdFromUrl && targets.some((t) => t.target_id === selectedIdFromUrl) && selectedIdFromUrl) ||
     targets[0]?.target_id;
 
-  // -------- aggregate per week for selected target --------
-  const weekMap = new Map<string, WeekAgg>();
+  // -------- aggregate per period for selected target --------
+  const periodMap = new Map<string, PeriodAgg>();
 
   if (selectedId) {
     for (const r of rawRows) {
       const id = (r as any).target_id as string;
       if (id !== selectedId) continue;
 
-      const wk = String((r as any).week_start);
+      const p = String((r as any)[periodKey]);
       const sets = Number((r as any).set_count ?? 0);
-      const reps = Number((r as any).total_reps ?? 0);
       const iso = Number((r as any).total_iso_sec ?? 0);
-      const ton = Number((r as any).total_tonnage_kg ?? 0);
-      const isoLoad = Number((r as any).total_iso_load_kg_sec ?? 0);
+      const reps = tab === "muscles" ? Number((r as any).total_reps ?? 0) : 0;
+      const ton = tab === "muscles" ? Number((r as any).total_tonnage_kg ?? 0) : 0;
+      const isoLoad = tab === "tendons" ? Number((r as any).iso_exposure_kg_sec ?? 0) : 0;
 
       const role = tab === "muscles" ? String((r as any).role ?? "") : "";
       const eff = tab === "muscles" ? sets * roleWeight(role) : sets;
 
       const cur =
-        weekMap.get(wk) ??
+        periodMap.get(p) ??
         ({
-          week_start: wk,
+          period_start: p,
           sets: 0,
           effective_sets: 0,
           reps: 0,
           iso_sec: 0,
           tonnage_kg: 0,
           iso_load_kg_sec: 0,
-          avg_iso_load_kg: null,
-        } as WeekAgg);
+        } as PeriodAgg);
 
       cur.sets += sets;
       cur.effective_sets += eff;
@@ -124,13 +137,12 @@ export default function AnalyticsClient(props: {
       cur.iso_sec += iso;
       cur.tonnage_kg += ton;
       cur.iso_load_kg_sec += isoLoad;
-      cur.avg_iso_load_kg = cur.iso_sec > 0 ? cur.iso_load_kg_sec / cur.iso_sec : null;
 
-      weekMap.set(wk, cur);
+      periodMap.set(p, cur);
     }
   }
 
-  const weeksSeries = Array.from(weekMap.values()).sort((a, b) => a.week_start.localeCompare(b.week_start));
+  const periodSeries = Array.from(periodMap.values()).sort((a, b) => a.period_start.localeCompare(b.period_start));
   const selectedName = selectedId ? byTarget.get(selectedId)?.target_name : undefined;
 
   // -------- href builders --------
@@ -139,15 +151,27 @@ export default function AnalyticsClient(props: {
   const tabHref = (nextTab: Tab) =>
     buildHref(base, {
       tab: nextTab,
+      grain,
       weeks: String(weeks),
       q: q || undefined,
       sort: undefined,
       target: undefined,
     });
 
+  const grainHref = (g: Grain) =>
+    buildHref(base, {
+      tab,
+      grain: g,
+      weeks: String(weeks),
+      q: q || undefined,
+      sort: sort || undefined,
+      target: selectedId,
+    });
+
   const rangeHref = (w: number) =>
     buildHref(base, {
       tab,
+      grain,
       weeks: String(w),
       q: q || undefined,
       sort: sort || undefined,
@@ -157,6 +181,7 @@ export default function AnalyticsClient(props: {
   const rowHref = (id: string) =>
     buildHref(base, {
       tab,
+      grain,
       weeks: String(weeks),
       q: q || undefined,
       sort: sort || undefined,
@@ -166,6 +191,7 @@ export default function AnalyticsClient(props: {
   const sortHref = (s: string) =>
     buildHref(base, {
       tab,
+      grain,
       weeks: String(weeks),
       q: q || undefined,
       sort: s,
@@ -174,7 +200,15 @@ export default function AnalyticsClient(props: {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6">
-      <AnalyticsHeader vaultId={vaultId} tab={tab} weeks={weeks} tabHref={tabHref} rangeHref={rangeHref} />
+      <AnalyticsHeader
+        vaultId={vaultId}
+        tab={tab}
+        grain={grain}
+        weeks={weeks}
+        tabHref={tabHref}
+        grainHref={grainHref}
+        rangeHref={rangeHref}
+      />
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <TargetListCard
@@ -189,12 +223,13 @@ export default function AnalyticsClient(props: {
           sortHref={sortHref}
         />
 
-        <WeeklyDetailsCard
+        <PeriodDetailsCard
           tab={tab}
+          grain={grain}
           weeks={weeks}
           selectedName={selectedName}
           selectedId={selectedId}
-          weeksSeries={weeksSeries}
+          periodSeries={periodSeries}
         />
       </div>
     </main>

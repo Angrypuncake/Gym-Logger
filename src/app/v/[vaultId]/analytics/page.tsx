@@ -1,5 +1,5 @@
 // src/app/v/[vaultId]/analytics/page.tsx
-import { fetchMuscleWeeklyMetrics, fetchTendonWeeklyMetrics } from "@/db/analytics";
+import { fetchMuscleMetrics, fetchTendonMetrics, type Grain } from "@/db/analytics";
 import AnalyticsClient from "./_components/AnalyticsClient";
 import { addDays, clampInt, pickFirst, SearchParams, toISODate } from "./utils";
 
@@ -16,10 +16,16 @@ export default async function AnalyticsPage({
   const tabRaw = (pickFirst(sp?.tab) ?? "muscles").toLowerCase();
   const tab = (tabRaw === "tendons" ? "tendons" : "muscles") as "muscles" | "tendons";
 
+  const grainRaw = (pickFirst(sp?.grain) ?? "week").toLowerCase();
+  const grain: Grain = grainRaw === "day" ? "day" : "week";
+
   const weeks = clampInt(parseInt(pickFirst(sp?.weeks) ?? "12", 10) || 12, 4, 52);
   const q = (pickFirst(sp?.q) ?? "").trim();
   const targetId = pickFirst(sp?.target);
-  const sort = (pickFirst(sp?.sort) ?? (tab === "muscles" ? "effective_sets" : "sets")).toLowerCase();
+
+  const sortDefault =
+    tab === "muscles" ? "effective_sets" : "iso_load";
+  const sort = (pickFirst(sp?.sort) ?? sortDefault).toLowerCase();
 
   const to = new Date();
   const from = addDays(to, -(weeks * 7 - 1));
@@ -28,20 +34,21 @@ export default async function AnalyticsPage({
 
   const rawRows =
     tab === "muscles"
-      ? await fetchMuscleWeeklyMetrics({ vaultId, fromISO, toISO })
-      : await fetchTendonWeeklyMetrics({ vaultId, fromISO, toISO });
+      ? await fetchMuscleMetrics({ vaultId, fromISO, toISO, grain })
+      : await fetchTendonMetrics({ vaultId, fromISO, toISO, grain });
 
   return (
     <AnalyticsClient
       vaultId={vaultId}
       tab={tab}
+      grain={grain}
       weeks={weeks}
       q={q}
       sort={sort}
       targetId={targetId}
       fromISO={fromISO}
       toISO={toISO}
-      rawRows={rawRows}
+      rawRows={rawRows as any}
     />
   );
 }

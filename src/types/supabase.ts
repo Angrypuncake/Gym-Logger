@@ -97,13 +97,6 @@ export type Database = {
             referencedColumns: ["target_id"]
           },
           {
-            foreignKeyName: "anatomical_targets_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "tendon_weekly_metrics"
-            referencedColumns: ["target_id"]
-          },
-          {
             foreignKeyName: "anatomical_targets_vault_fk"
             columns: ["vault_id"]
             isOneToOne: false
@@ -268,13 +261,6 @@ export type Database = {
             referencedColumns: ["target_id"]
           },
           {
-            foreignKeyName: "exercise_targets_target_id_fkey"
-            columns: ["target_id"]
-            isOneToOne: false
-            referencedRelation: "tendon_weekly_metrics"
-            referencedColumns: ["target_id"]
-          },
-          {
             foreignKeyName: "exercise_targets_vault_id_fkey"
             columns: ["vault_id"]
             isOneToOne: false
@@ -339,13 +325,6 @@ export type Database = {
             columns: ["tendon_target_id"]
             isOneToOne: false
             referencedRelation: "tendon_set_facts"
-            referencedColumns: ["target_id"]
-          },
-          {
-            foreignKeyName: "ete_tendon_fk"
-            columns: ["tendon_target_id"]
-            isOneToOne: false
-            referencedRelation: "tendon_weekly_metrics"
             referencedColumns: ["target_id"]
           },
           {
@@ -813,6 +792,57 @@ export type Database = {
           },
         ]
       }
+      muscle_daily_metrics: {
+        Row: {
+          day_start: string | null
+          role: string | null
+          set_count: number | null
+          target_id: string | null
+          target_name: string | null
+          total_iso_sec: number | null
+          total_reps: number | null
+          total_tonnage_kg: number | null
+          vault_id: string | null
+          weighted_tonnage_kg: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_targets_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "anatomical_targets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_targets_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "muscle_set_facts"
+            referencedColumns: ["target_id"]
+          },
+          {
+            foreignKeyName: "exercise_targets_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "muscle_weekly_metrics"
+            referencedColumns: ["target_id"]
+          },
+          {
+            foreignKeyName: "exercise_targets_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "tendon_set_facts"
+            referencedColumns: ["target_id"]
+          },
+          {
+            foreignKeyName: "sets_vault_fk"
+            columns: ["vault_id"]
+            isOneToOne: false
+            referencedRelation: "vaults"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       muscle_exposure_daily: {
         Row: {
           logged_sets: number | null
@@ -853,13 +883,6 @@ export type Database = {
             columns: ["target_id"]
             isOneToOne: false
             referencedRelation: "tendon_set_facts"
-            referencedColumns: ["target_id"]
-          },
-          {
-            foreignKeyName: "exercise_targets_target_id_fkey"
-            columns: ["target_id"]
-            isOneToOne: false
-            referencedRelation: "tendon_weekly_metrics"
             referencedColumns: ["target_id"]
           },
           {
@@ -967,6 +990,54 @@ export type Database = {
           },
         ]
       }
+      tendon_daily_metrics: {
+        Row: {
+          day_start: string | null
+          effective_sets: number | null
+          set_count: number | null
+          target_id: string | null
+          target_name: string | null
+          total_iso_sec: number | null
+          vault_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ete_tendon_fk"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "anatomical_targets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ete_tendon_fk"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "muscle_set_facts"
+            referencedColumns: ["target_id"]
+          },
+          {
+            foreignKeyName: "ete_tendon_fk"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "muscle_weekly_metrics"
+            referencedColumns: ["target_id"]
+          },
+          {
+            foreignKeyName: "ete_tendon_fk"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "tendon_set_facts"
+            referencedColumns: ["target_id"]
+          },
+          {
+            foreignKeyName: "sets_vault_fk"
+            columns: ["vault_id"]
+            isOneToOne: false
+            referencedRelation: "vaults"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tendon_exposure_daily: {
         Row: {
           logged_sets: number | null
@@ -1006,13 +1077,6 @@ export type Database = {
             columns: ["target_id"]
             isOneToOne: false
             referencedRelation: "tendon_set_facts"
-            referencedColumns: ["target_id"]
-          },
-          {
-            foreignKeyName: "ete_tendon_fk"
-            columns: ["target_id"]
-            isOneToOne: false
-            referencedRelation: "tendon_weekly_metrics"
             referencedColumns: ["target_id"]
           },
           {
@@ -1056,18 +1120,43 @@ export type Database = {
       }
       tendon_weekly_metrics: {
         Row: {
-          avg_iso_load_kg: number | null
+          effective_sets: number | null
           set_count: number | null
           target_id: string | null
           target_name: string | null
-          total_iso_load_kg_sec: number | null
           total_iso_sec: number | null
-          total_reps: number | null
-          total_tonnage_kg: number | null
           vault_id: string | null
           week_start: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "ete_tendon_fk"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "anatomical_targets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ete_tendon_fk"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "muscle_set_facts"
+            referencedColumns: ["target_id"]
+          },
+          {
+            foreignKeyName: "ete_tendon_fk"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "muscle_weekly_metrics"
+            referencedColumns: ["target_id"]
+          },
+          {
+            foreignKeyName: "ete_tendon_fk"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "tendon_set_facts"
+            referencedColumns: ["target_id"]
+          },
           {
             foreignKeyName: "sets_vault_fk"
             columns: ["vault_id"]

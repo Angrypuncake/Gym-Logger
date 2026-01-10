@@ -4,7 +4,6 @@
 import Link from "next/link";
 import { formatKg, formatNumber, Tab } from "./AnalyticsUtils";
 
-
 export type TargetAgg = {
   target_id: string;
   target_name: string;
@@ -14,7 +13,6 @@ export type TargetAgg = {
   iso_sec: number;
   tonnage_kg: number;
   iso_load_kg_sec: number;
-  avg_iso_load_kg: number | null;
 };
 
 export default function TargetListCard(props: {
@@ -41,7 +39,6 @@ export default function TargetListCard(props: {
         </div>
 
         <div className="mt-2 flex items-center gap-2">
-          {/* URL-driven search (current pattern) */}
           <input
             defaultValue={q}
             placeholder="Search… (edit URL q=)"
@@ -52,56 +49,66 @@ export default function TargetListCard(props: {
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
           <span className="text-muted-foreground">Sort:</span>
 
-          {tab === "muscles" && (
-            <Link
-              href={sortHref("effective_sets")}
-              className={`rounded-md px-2 py-1 ${
-                sort === "effective_sets" ? "bg-foreground text-background" : "border border-input"
-              }`}
-            >
-              effective sets
-            </Link>
-          )}
-
-          <Link
-            href={sortHref("sets")}
-            className={`rounded-md px-2 py-1 ${sort === "sets" ? "bg-foreground text-background" : "border border-input"}`}
-          >
-            sets
-          </Link>
-
-          <Link
-            href={sortHref("reps")}
-            className={`rounded-md px-2 py-1 ${sort === "reps" ? "bg-foreground text-background" : "border border-input"}`}
-          >
-            reps
-          </Link>
-
-          <Link
-            href={sortHref("iso")}
-            className={`rounded-md px-2 py-1 ${sort === "iso" ? "bg-foreground text-background" : "border border-input"}`}
-          >
-            iso sec
-          </Link>
-
-          {tab === "tendons" ? (
-            <Link
-              href={sortHref("iso_load")}
-              className={`rounded-md px-2 py-1 ${
-                sort === "iso_load" ? "bg-foreground text-background" : "border border-input"
-              }`}
-            >
-              iso load
-            </Link>
+          {tab === "muscles" ? (
+            <>
+              <Link
+                href={sortHref("effective_sets")}
+                className={`rounded-md px-2 py-1 ${
+                  sort === "effective_sets" ? "bg-foreground text-background" : "border border-input"
+                }`}
+              >
+                effective sets
+              </Link>
+              <Link
+                href={sortHref("sets")}
+                className={`rounded-md px-2 py-1 ${sort === "sets" ? "bg-foreground text-background" : "border border-input"}`}
+              >
+                sets
+              </Link>
+              <Link
+                href={sortHref("reps")}
+                className={`rounded-md px-2 py-1 ${sort === "reps" ? "bg-foreground text-background" : "border border-input"}`}
+              >
+                reps
+              </Link>
+              <Link
+                href={sortHref("iso")}
+                className={`rounded-md px-2 py-1 ${sort === "iso" ? "bg-foreground text-background" : "border border-input"}`}
+              >
+                iso sec
+              </Link>
+              <Link
+                href={sortHref("tonnage")}
+                className={`rounded-md px-2 py-1 ${
+                  sort === "tonnage" ? "bg-foreground text-background" : "border border-input"
+                }`}
+              >
+                tonnage
+              </Link>
+            </>
           ) : (
-            <Link
-              href={sortHref("tonnage")}
-              className={`rounded-md px-2 py-1 ${
-                sort === "tonnage" ? "bg-foreground text-background" : "border border-input"
-              }`}
-            >
-              tonnage
-            </Link>
+            <>
+              <Link
+                href={sortHref("iso_load")}
+                className={`rounded-md px-2 py-1 ${
+                  sort === "iso_load" ? "bg-foreground text-background" : "border border-input"
+                }`}
+              >
+                iso load
+              </Link>
+              <Link
+                href={sortHref("iso")}
+                className={`rounded-md px-2 py-1 ${sort === "iso" ? "bg-foreground text-background" : "border border-input"}`}
+              >
+                iso sec
+              </Link>
+              <Link
+                href={sortHref("sets")}
+                className={`rounded-md px-2 py-1 ${sort === "sets" ? "bg-foreground text-background" : "border border-input"}`}
+              >
+                sets
+              </Link>
+            </>
           )}
         </div>
       </div>
@@ -126,17 +133,21 @@ export default function TargetListCard(props: {
                   >
                     <div className="min-w-0">
                       <div className="truncate text-sm font-medium">{t.target_name}</div>
-                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                        <span>{tab === "muscles" ? "eff sets" : "sets"}: {setsDisplay}</span>
-                        <span>reps: {formatNumber(t.reps)}</span>
-                        <span>iso: {formatNumber(t.iso_sec)}</span>
 
-                        {tab === "tendons" ? (
-                          <span>iso load: {formatKg(t.iso_load_kg_sec)} kg·s</span>
-                        ) : (
+                      {tab === "muscles" ? (
+                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          <span>eff sets: {setsDisplay}</span>
+                          <span>reps: {formatNumber(t.reps)}</span>
+                          <span>iso: {formatNumber(t.iso_sec)}</span>
                           <span>ton: {formatKg(t.tonnage_kg)}</span>
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          <span>sets: {setsDisplay}</span>
+                          <span>iso sec: {formatNumber(t.iso_sec)}</span>
+                          <span>iso load: {formatKg(t.iso_load_kg_sec)} kg·s</span>
+                        </div>
+                      )}
                     </div>
                   </Link>
                 </li>
